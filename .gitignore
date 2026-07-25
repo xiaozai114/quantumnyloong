@@ -531,3 +531,11 @@ pyrightconfig.json
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,python,latex
 
 Tencent_Sparking_Program_2026(1).pdf
+
+# 讨论推导辅助脚本（不提交到仓库）
+Problem2/code/1a_full_derivation.py
+Problem2/code/1a_spin_spatial_mapping.py
+Problem2/code/1a_phi1_count_physics.py
+
+# 完整版验证脚本（存档，不提交）
+Problem2/code/extras/
