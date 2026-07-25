@@ -303,6 +303,9 @@ TSWLatexianTemp*
 # TeXnicCenter
 *.tps
 
+.claude
+.vscode
+
 # auto folder when using emacs and auctex
 ./auto/*
 *.el
@@ -339,6 +342,8 @@ __pycache__/
 
 # C extensions
 *.so
+
+Tencent_Sparking_Program_2026_中文翻译.pdf
 
 # Distribution / packaging
 .Python
@@ -504,11 +509,6 @@ pyrightconfig.json
 
 ### VisualStudioCode ###
 .vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-!.vscode/*.code-snippets
 
 # Local History for Visual Studio Code
 .history/

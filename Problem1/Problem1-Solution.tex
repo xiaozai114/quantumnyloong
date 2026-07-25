@@ -249,6 +249,128 @@ depth, or both simultaneously.
     \item[(e)] (Optional) Use CNOTs and Hadamards to compute the inner product $|\braket{\psi|\phi}|$ for arbitrary states $\ket{\psi}$ and $\ket{\phi}$.
 \end{enumerate}
 
+\medskip
+\noindent\textbf{Solution (a).} 先注意到两个算符对易。利用 $ZX=-XZ$（故 $Z_iX_i=-X_iZ_i$，而对不同比特的算符彼此对易）：
+\begin{equation*}
+    (Z_1Z_2)(X_1X_2)=(Z_1X_1)(Z_2X_2)=(X_1Z_1)(X_2Z_2)=(X_1X_2)(Z_1Z_2),
+\end{equation*}
+因此 $[Z_1Z_2,\,X_1X_2]=0$，二者可同时对角化，共同本征基即 Bell 基。逐一检验四个 Bell 态可得
+\begin{equation*}
+\begin{array}{c|cc}
+ & Z_1Z_2 & X_1X_2\\ \hline
+\ket{\Phi^+}=\tfrac{1}{\sqrt2}(\ket{00}+\ket{11}) & +1 & +1\\
+\ket{\Phi^-}=\tfrac{1}{\sqrt2}(\ket{00}-\ket{11}) & +1 & -1\\
+\ket{\Psi^+}=\tfrac{1}{\sqrt2}(\ket{01}+\ket{10}) & -1 & +1\\
+\ket{\Psi^-}=\tfrac{1}{\sqrt2}(\ket{01}-\ket{10}) & -1 & -1
+\end{array}
+\end{equation*}
+故 $Z_1Z_2$ 与 $X_1X_2$ 的\textbf{共同 $+1$ 本征态}是一维子空间 $\mathrm{span}\{\ket{\Phi^+}\}$，对应投影子
+\begin{equation*}
+    \Pi_{++}=\frac{(I+Z_1Z_2)(I+X_1X_2)}{4}=\ket{\Phi^+}\!\bra{\Phi^+}.
+\end{equation*}
+
+\textbf{方法一（非破坏性稳定子测量，两个辅助比特）。} 对任一 Pauli 串可作“基旋转 $\to$ 奇偶校验 $\to$ 复原”的非破坏性测量：
+\begin{itemize}
+    \item 测 $Z_1Z_2$：辅助比特 $a_Z\ket{0}$，施加 $\mathrm{CNOT}(q_1\to a_Z)$、$\mathrm{CNOT}(q_2\to a_Z)$，测量 $a_Z$。结果 $m_Z\in\{0,1\}$，本征值 $(-1)^{m_Z}$。此操作不区分 $\ket{00}$ 与 $\ket{11}$（也不区分 $\ket{01}$ 与 $\ket{10}$），故在保持子空间内相干。
+    \item 测 $X_1X_2$：对 $q_1,q_2$ 各施 $H$（把 $X$ 旋到 $Z$），再用另一个辅助比特 $a_X$ 做同样的奇偶校验 $\mathrm{CNOT}(q_1\to a_X)$、$\mathrm{CNOT}(q_2\to a_X)$，测量 $a_X$，最后对 $q_1,q_2$ 再施 $H$ 复原。结果 $m_X$，本征值 $(-1)^{m_X}$。
+\end{itemize}
+由于两算符对易，按任意顺序依次测量都会投影到共同本征子空间。\textbf{后选择} $m_Z=0$ 且 $m_X=0$，数据比特即被投影到 $\ket{\Phi^+}$。投影保真地保留了该子空间内的态，因此投影后 $\ket{\psi}\to \ket{\Phi^+}$（重归一化）。成功概率为
+\begin{equation*}
+    p_{\text{succ}}=\|\Pi_{++}\ket{\psi}\|^2=|\braket{\Phi^+|\psi}|^2.
+\end{equation*}
+
+\textbf{方法二（Bell 基测量，更紧凑）。} 施加 $\mathrm{CNOT}(q_1\to q_2)$ 再 $H(q_1)$，然后在计算基下测量两个比特。该变换把四个 Bell 态分别映到 $\ket{00},\ket{10},\ket{01},\ket{11}$，特别地 $\ket{\Phi^+}\to\ket{00}$。因此测量结果为 $00$ 即对应投影到共同 $+1$ 本征态 $\ket{\Phi^+}$。
+
+\hfill $\square$
+
+\medskip
+\noindent\textbf{Solution (b).} 设 $P=P_1\otimes P_2\otimes\cdots\otimes P_n$，$P_i\in\{I,X,Y,Z\}$。因 $P^2=I$，其本征值为 $\pm1$，相应的两输出投影测量为
+\begin{equation*}
+    \Pi_{+}=\frac{I+P}{2},\qquad \Pi_{-}=\frac{I-P}{2}.
+\end{equation*}
+构造对 $P$ 的（非破坏性）投影测量的通用方法如下：
+
+\begin{enumerate}
+    \item 引入一个辅助比特 $a$，初始化为 $\ket{0}$。
+    \item 对支集 $\mathrm{supp}(P)=\{i:P_i\ne I\}$ 中的每个比特 $i$，施加基旋转 $U_i$ 使得 $U_iP_iU_i^\dagger=Z$：
+    \begin{equation*}
+    \begin{array}{c|cccc}
+        P_i & Z & X & Y & I\\ \hline
+        U_i & I & H & HS^\dagger & \text{（不参与）}
+    \end{array}
+    \end{equation*}
+    （其中 $S=\mathrm{diag}(1,i)$；$Y$ 的旋转利用 $S^\dagger YS=X$ 与 $HXH=Z$。）
+    \item 对支集中每个比特 $i$ 施加 $\mathrm{CNOT}(i\to a)$，然后在计算基下测量 $a$，得结果 $m\in\{0,1\}$。
+    \item 对支集中每个比特施加 $U_i^\dagger$ 复原（使测量非破坏性：本征子空间内的态不被进一步分辨）。
+\end{enumerate}
+
+\textbf{正确性。} 旋转后 $P$ 变为 $\widetilde{P}=\bigotimes_{i\in\mathrm{supp}} Z_i$，其本征值是支集上各 $Z$ 本征值之积。各 $\mathrm{CNOT}(i\to a)$ 把 $\ket{1}$ 的个数（即 $z_i=-1$ 的个数）累加到 $a$ 上，故 $a$ 的测量值 $m=\bigoplus_{i\in\mathrm{supp}} b_i$，而 $\widetilde P$ 的本征值 $=\prod_i z_i=(-1)^m$，恰由 $a$ 读出：$m=0\Rightarrow +1$，$m=1\Rightarrow -1$。$U_i^\dagger$ 把态转回原基，所以最终数据寄存器被投影到 $P$ 的 $\pm1$ 本征子空间，且不破坏子空间内的相干性。
+
+\hfill $\square$
+
+\medskip
+\noindent\textbf{Solution (c).} 设保留第一个比特为目标，对其余 $n-1$ 个比特做 $X$（Hadamard）基测量并作经典前馈。初始态
+\begin{equation*}
+    \ket{\Psi_n}=\alpha\ket{0}_1\ket{0\cdots0}_{2..n}+\sqrt{1-\alpha^2}\,\ket{1}_1\ket{1\cdots1}_{2..n}.
+\end{equation*}
+\textbf{协议：} (i) 对比特 $2,\dots,n$ 各施加 $H$；(ii) 在计算基下测量 $2,\dots,n$，得 $b_2,\dots,b_n\in\{0,1\}$；(iii) 计算奇偶 $s=b_2\oplus\cdots\oplus b_n$，对比特 1 施加受经典控制的 $Z^s$（即 $s=1$ 时施加 $Z$）。完成后比特 1 即为 $\alpha\ket{0}+\sqrt{1-\alpha^2}\,\ket{1}$。
+
+\textbf{推导。} 用 $\ket{\pm}=\frac{1}{\sqrt2}(\ket0\pm\ket1)$ 与
+\begin{equation*}
+    \ket{+\cdots+}=\tfrac{1}{\sqrt{2^{n-1}}}\!\!\sum_{b_2..b_n}\!\!\ket{b_2..b_n},\qquad
+    \ket{-\cdots-}=\tfrac{1}{\sqrt{2^{n-1}}}\!\!\sum_{b_2..b_n}\!\!(-1)^{b_2+\cdots+b_n}\ket{b_2..b_n},
+\end{equation*}
+施 $H$ 后
+\begin{equation*}
+    \ket{\Psi_n}=\frac{1}{\sqrt{2^{n-1}}}\sum_{b_2..b_n}\Big(\alpha\ket{0}_1+(-1)^{s}\sqrt{1-\alpha^2}\,\ket{1}_1\Big)\ket{b_2..b_n}.
+\end{equation*}
+测量 $2,\dots,n$ 得任一具体结果时，比特 1 坌缩为（已归一化）$\alpha\ket{0}+(-1)^s\sqrt{1-\alpha^2}\,\ket{1}$。由于 $Z\ket{1}=-\ket{1}$，施加 $Z^s$ 恰好抵消 $(-1)^s$：
+\begin{equation*}
+    Z^s\big(\alpha\ket{0}+(-1)^s\sqrt{1-\alpha^2}\,\ket{1}\big)=\alpha\ket{0}+\sqrt{1-\alpha^2}\,\ket{1}.
+\end{equation*}
+\textbf{成功概率为 1（确定性）。} 每种测量结果都可用，只需前馈修正；各结果等概率 $1/2^{n-1}$。$n=2$ 特例：测量比特 2 于 $X$ 基，结果 $+1$（$s=0$）即得目标态，结果 $-1$（$s=1$）则补一个 $Z$。这正是“基于测量的纠缠式单比特态制备”。
+
+\hfill $\square$
+
+\medskip
+\noindent\textbf{Solution (d) (Optional).} 仅最近邻 $\mathrm{CNOT}$ 可用时，纯幺正地把控制 $q_0$ 扇出到 $q_1,\dots,q_4$ 需要 $O(n)$ 深度。利用辅助比特与测量可做到\textbf{常数深度}。记 $n=4$ 个目标，引入 $n+1=5$ 个辅助比特 $(a_0,a_1,\dots,a_4)$，构造如下。
+
+\begin{enumerate}
+    \item \textbf{资源制备：} 在 $a_0,a_1,\dots,a_4$ 上制备 GHZ（猫）态 $\frac{1}{\sqrt2}(\ket{0}^{\otimes5}+\ket{1}^{\otimes5})$。（按题意把它视作可制备的纠缠资源；在 1D 链上它本身可由 Hadamard $+$ 级联 $\mathrm{CNOT}$ 以 $O(n)$ 深度备好，也可由测量以常数深度备好。）
+    \item \textbf{相干耦合（深度 2）：} 施加 $\mathrm{CNOT}(q_0\to a_0)$；随后对每个 $i=1,\dots,4$ 并行施加 $\mathrm{CNOT}(a_i\to q_i)$（把辅助比特排布在每个数据比特近邻即可全并行）。
+    \item \textbf{测量（一轮）：} 在 $X$ 基下测量所有 $a_i$，得 $m_0,m_1,\dots,m_4$。
+    \item \textbf{经典前馈修正：} 对每个目标 $q_i$（$i=1,\dots,4$）施加受控相位修正 $Z^{m_i\oplus m_0}$（以及对 $q_0$ 的整体相位，不影响计算基输出）。
+\end{enumerate}
+
+\textbf{原理。} GHZ 态 $\frac{1}{\sqrt2}(\ket{0^n}+\ket{1^n})$ 在 $X$ 基下测量时，结果满足偶奇偶 $\bigoplus_i m_i=0$；而把 $\ket{1^n}$ 分支换成 $\ket{1\,0\cdots0}$（即经 $\mathrm{CNOT}(q_0\to a_0)$ 注入控制比特 $x_0$）会把奇偶翻转为 $\bigoplus_i m_i=x_0$。于是 $X$-测量结果的奇偶性携带 $x_0$，相干地“分发”到每个目标；经过 (b) 中标准的相位修正后，净效果为对每个目标施加了 $X^{x_0}$，即
+\begin{equation*}
+    q_i:\ x_i\longmapsto x_i\oplus x_0,\qquad i=1,\dots,4,
+\end{equation*}
+恰好是 $F_4$。\textbf{资源：} 深度 $O(1)$（相干耦合 2 层 $+$ 一次测量 $+$ 一层修正），规模 $O(n)$（$n+1$ 个辅助比特、$O(n)$ 个 $\mathrm{CNOT}$）。相较纯幺真的 $O(n)$ 深度，测量把深度降到与 $n$ 无关。
+
+\hfill $\square$
+
+\medskip
+\noindent\textbf{Solution (e) (Optional).} 用 \textbf{SWAP 检验}（swap test）。引入一个辅助比特 $c\ket{0}$，电路为：
+\begin{equation*}
+    \xrightarrow{H(c)}\ \xrightarrow{\mathrm{cSWAP}(c;\,\psi,\phi)}\ \xrightarrow{H(c)}\ \xrightarrow{\text{测 }c}.
+\end{equation*}
+其中受控交换 $\mathrm{cSWAP}$（Fredkin 门）可分解为 $2$ 个 $\mathrm{CNOT}$ 夹一个 Toffoli：$\mathrm{CNOT}(\psi,\phi)$；$\mathrm{Toffoli}(c,\phi,\psi)$；$\mathrm{CNOT}(\psi,\phi)$，而 Toffoli 又可由 $\mathrm{CNOT}+H$（$+T$ 门）实现。
+
+\textbf{分析。} 第一个 $H$ 后 $c=\frac{1}{\sqrt2}(\ket0+\ket1)$；$\ket1$ 分支把 $\ket\psi,\ket\phi$ 交换。经第二个 $H$，
+\begin{equation*}
+    \braket{0|c}=\tfrac12\big(\ket{\psi}\ket{\phi}+\ket{\phi}\ket{\psi}\big),\qquad
+    P(c=0)=\tfrac12\big(1+|\braket{\psi|\phi}|^2\big).
+\end{equation*}
+故
+\begin{equation*}
+    |\braket{\psi|\phi}|^2=2P(c=0)-1=1-2P(c=1),\qquad
+    |\braket{\psi|\phi}|=\sqrt{\,2P(c=0)-1\,}.
+\end{equation*}
+多次重复统计 $P(c=0)$ 即可估计内积的模长。当 $\ket\psi=\ket\phi$ 时 $P(c=0)=1$；当二者正交时 $P(c=0)=\tfrac12$，符合预期。
+
+\hfill $\square$
+
 \subsection*{7. Reversible Circuit}
 (Optional) Construct a reversible classical circuit using Toffoli and NOT gates to evaluate the formula:
 \begin{align*}
