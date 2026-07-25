@@ -1,0 +1,300 @@
+\documentclass{ctexart}
+
+% 中文支持由 ctexart 文档类自动提供
+
+% 页面设置
+\usepackage[top=2.54cm, bottom=2.54cm, left=3.18cm, right=3.18cm]{geometry}
+
+% 数学公式
+\usepackage{amsmath, amssymb, amsthm}
+
+% 图形与表格
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+
+% 超链接
+\usepackage{hyperref}
+
+% 量子态和算符
+\usepackage{bm}
+\newcommand{\ket}[1]{|#1\rangle}
+\newcommand{\bra}[1]{\langle #1|}
+\newcommand{\braket}[2]{\langle #1|#2\rangle}
+
+% 标题设置
+\title{Problem 1: Preliminaries and Warm-up}
+\author{}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section*{Problem 1: Preliminaries and Warm-up}
+
+\subsection*{1.}
+Show that $R_{\mathbf{n}}(\theta) = e^{-i\frac{\theta}{2}\mathbf{n}\cdot\boldsymbol{\sigma}}$ takes the form
+\begin{equation}
+    \cos(\theta/2)I - i\sin(\theta/2)(n_X X + n_Y Y + n_Z Z),
+\end{equation}
+where $\mathbf{n}$ is a unit 3D vector and $\boldsymbol{\sigma} = (X, Y, Z)$.
+
+\medskip
+\noindent\textbf{Solution:}
+首先计算 $(\mathbf{n}\cdot\boldsymbol{\sigma})^2$。Pauli 矩阵满足对易关系
+$\{X,Y\} = \{Y,Z\} = \{Z,X\} = 0$ 和 $X^2 = Y^2 = Z^2 = I$，因此
+\begin{align*}
+    (\mathbf{n}\cdot\boldsymbol{\sigma})^2
+    &= (n_X X + n_Y Y + n_Z Z)^2 \\
+    &= n_X^2 X^2 + n_Y^2 Y^2 + n_Z^2 Z^2
+       + n_X n_Y (XY+YX) + n_Y n_Z (YZ+ZY) + n_Z n_X (ZX+XZ) \\
+    &= (n_X^2 + n_Y^2 + n_Z^2) I \\
+    &= I,
+\end{align*}
+最后一步利用了 $\mathbf{n}$ 是单位向量。
+
+基于此，将指数函数作 Taylor 展开并按奇偶项分组：
+\begin{align*}
+    R_{\mathbf{n}}(\theta) = e^{-i\frac{\theta}{2}\mathbf{n}\cdot\boldsymbol{\sigma}}
+    &= \sum_{k=0}^{\infty} \frac{1}{k!} \left(-i\frac{\theta}{2}\right)^k (\mathbf{n}\cdot\boldsymbol{\sigma})^k \\
+    &= \sum_{m=0}^{\infty} \frac{(-i\frac{\theta}{2})^{2m}}{(2m)!} (\mathbf{n}\cdot\boldsymbol{\sigma})^{2m}
+       + \sum_{m=0}^{\infty} \frac{(-i\frac{\theta}{2})^{2m+1}}{(2m+1)!} (\mathbf{n}\cdot\boldsymbol{\sigma})^{2m+1}.
+\end{align*}
+对于偶数项：$(\mathbf{n}\cdot\boldsymbol{\sigma})^{2m} = [(\mathbf{n}\cdot\boldsymbol{\sigma})^2]^m = I^m = I$；
+对于奇数项：$(\mathbf{n}\cdot\boldsymbol{\sigma})^{2m+1} = (\mathbf{n}\cdot\boldsymbol{\sigma})^{2m}(\mathbf{n}\cdot\boldsymbol{\sigma}) = \mathbf{n}\cdot\boldsymbol{\sigma}$。
+
+代入：
+\begin{align*}
+    R_{\mathbf{n}}(\theta)
+    &= \sum_{m=0}^{\infty} \frac{(-1)^m (\theta/2)^{2m}}{(2m)!}\, I
+       - i\,(\mathbf{n}\cdot\boldsymbol{\sigma}) \sum_{m=0}^{\infty} \frac{(-1)^m (\theta/2)^{2m+1}}{(2m+1)!} \\
+    &= \cos(\theta/2)\,I \;-\; i\sin(\theta/2)\,(\mathbf{n}\cdot\boldsymbol{\sigma}) \\
+    &= \cos(\theta/2)I - i\sin(\theta/2)(n_X X + n_Y Y + n_Z Z).
+\end{align*}
+这里我们利用了 $(-i)^{2m} = (-1)^m$ 和 $(-i)^{2m+1} = -i(-1)^m$。
+
+\hfill $\square$
+
+\subsection*{2.}
+Show that any single-qubit unitary $U$ takes the form $e^{i\alpha}R_{\mathbf{n}}(\theta)$ for some $\alpha$, $\mathbf{n}$, and $\theta$.
+
+\medskip
+\noindent\textbf{Solution:}
+任意 $2\times 2$ 酉矩阵 $U$ 满足 $U^\dagger U = I$ 且 $|\det U| = 1$。设 $\det U = e^{i\gamma}$，
+则可提取全局相位：
+\begin{equation*}
+    U = e^{i\gamma/2} \, S, \qquad S \in \mathrm{SU}(2),\quad \det S = 1.
+\end{equation*}
+令 $\alpha = \gamma/2$。下面只需证明任意 $\mathrm{SU}(2)$ 矩阵 $S$ 均可写为 $R_{\mathbf{n}}(\theta)$ 的形式。
+
+$\mathrm{SU}(2)$ 矩阵的最一般形式为
+\begin{equation*}
+    S = \begin{pmatrix}
+        a & -b^* \\[2pt]
+        b & a^*
+    \end{pmatrix}, \qquad |a|^2 + |b|^2 = 1.
+\end{equation*}
+令 $a = a_r + i a_i$，$b = b_r + i b_i$，则约束为 $a_r^2 + a_i^2 + b_r^2 + b_i^2 = 1$。
+
+另一方面，由第1问的结果：
+\begin{equation*}
+    R_{\mathbf{n}}(\theta)
+    = \cos\frac{\theta}{2} I - i\sin\frac{\theta}{2}(n_X X + n_Y Y + n_Z Z)
+    = \begin{pmatrix}
+        \cos\frac{\theta}{2} - i n_Z \sin\frac{\theta}{2} & -i(n_X - i n_Y)\sin\frac{\theta}{2} \\[4pt]
+        -i(n_X + i n_Y)\sin\frac{\theta}{2} & \cos\frac{\theta}{2} + i n_Z \sin\frac{\theta}{2}
+    \end{pmatrix}.
+\end{equation*}
+对比 $S$ 的形式，取
+\begin{equation*}
+    a = \cos\frac{\theta}{2} - i n_Z \sin\frac{\theta}{2}, \qquad
+    b = -i(n_X + i n_Y)\sin\frac{\theta}{2},
+\end{equation*}
+则有 $a_r = \cos\frac{\theta}{2}$, $a_i = -n_Z\sin\frac{\theta}{2}$, $b_r = n_Y\sin\frac{\theta}{2}$, $b_i = -n_X\sin\frac{\theta}{2}$。
+由 $|\mathbf{n}|=1$ 可知 $|a|^2+|b|^2 = \cos^2\frac{\theta}{2} + \sin^2\frac{\theta}{2} = 1$，
+即该映射覆盖了所有 $\mathrm{SU}(2)$ 矩阵。
+
+具体地，给定额外的约束 $S^\dagger S = I$ 及 $\det S = 1$，可以直接解出参数：
+\begin{align*}
+    \theta &= 2\arccos(\mathrm{Re}(a)) = 2\arccos(a_r), \\
+    n_X    &= -\frac{\mathrm{Im}(b)}{\sin(\theta/2)}, \quad
+    n_Y    = \frac{\mathrm{Re}(b)}{\sin(\theta/2)}, \quad
+    n_Z    = -\frac{\mathrm{Im}(a)}{\sin(\theta/2)}.
+\end{align*}
+由于 $a_r^2 + a_i^2 + b_r^2 + b_i^2 = 1$，$n_X^2+n_Y^2+n_Z^2 = 1$ 自然满足。
+
+因此任意单量子比特酉变换 $U$ 都可写为 $U = e^{i\alpha}R_{\mathbf{n}}(\theta)$。
+
+\hfill $\square$
+
+\subsection*{3.}
+Implement $R_{\mathbf{n}}(\theta)$ using $R_Y(\alpha)$ and $R_Z(\beta)$ for appropriate choices of $\alpha$ and $\beta$.
+
+\medskip
+\noindent\textbf{Solution:}
+采用 Euler 角分解。将单位向量 $\mathbf{n}$ 写成球坐标形式：
+\begin{equation*}
+    \mathbf{n} = (\sin\beta\cos\alpha,\; \sin\beta\sin\alpha,\; \cos\beta),
+\end{equation*}
+其中 $\alpha \in [0, 2\pi)$，$\beta \in [0, \pi]$。
+
+此时
+\begin{equation*}
+    \mathbf{n}\cdot\boldsymbol{\sigma}
+    = \sin\beta\cos\alpha\, X + \sin\beta\sin\alpha\, Y + \cos\beta\, Z.
+\end{equation*}
+
+利用 Pauli 矩阵的相似变换：
+\begin{align*}
+    e^{-i\frac{\alpha}{2}Z} X e^{i\frac{\alpha}{2}Z} &= \cos\alpha\, X + \sin\alpha\, Y, \\
+    e^{-i\frac{\beta}{2}Y} Z e^{i\frac{\beta}{2}Y}  &= \cos\beta\, Z + \sin\beta\, X,
+\end{align*}
+可以构造
+\begin{align*}
+    e^{-i\frac{\alpha}{2}Z} e^{-i\frac{\beta}{2}Y}\, Z\,
+    e^{i\frac{\beta}{2}Y} e^{i\frac{\alpha}{2}Z}
+    &= e^{-i\frac{\alpha}{2}Z} (\cos\beta\, Z + \sin\beta\, X) e^{i\frac{\alpha}{2}Z} \\
+    &= \cos\beta\, Z + \sin\beta\cos\alpha\, X + \sin\beta\sin\alpha\, Y \\
+    &= \mathbf{n}\cdot\boldsymbol{\sigma}.
+\end{align*}
+
+即 $\mathbf{n}\cdot\boldsymbol{\sigma} = R_Z(\alpha) R_Y(\beta)\, Z\, R_Y(-\beta) R_Z(-\alpha)$，其中
+\begin{equation*}
+    R_Y(\phi) = e^{-i\frac{\phi}{2}Y}, \qquad
+    R_Z(\phi) = e^{-i\frac{\phi}{2}Z}.
+\end{equation*}
+
+对任意解析函数 $f$，有 $f(R\,A\,R^\dagger) = R\,f(A)\,R^\dagger$。令 $f(x) = e^{-i\frac{\theta}{2}x}$，则
+\begin{align*}
+    R_{\mathbf{n}}(\theta) = e^{-i\frac{\theta}{2}\mathbf{n}\cdot\boldsymbol{\sigma}}
+    &= R_Z(\alpha) R_Y(\beta)\; e^{-i\frac{\theta}{2}Z}\; R_Y(-\beta) R_Z(-\alpha) \\
+    &= R_Z(\alpha)\, R_Y(\beta)\, R_Z(\theta)\, R_Y(-\beta)\, R_Z(-\alpha).
+\end{align*}
+
+这就是最一般的分解式。特别地，当 $\mathbf{n}$ 位于 $XZ$ 平面时（即 $\alpha = 0$，$\mathbf{n} = (\sin\beta, 0, \cos\beta)$），
+退化为更简洁的形式：
+\begin{equation*}
+    R_{\mathbf{n}}(\theta) = R_Y(\beta)\, R_Z(\theta)\, R_Y(-\beta).
+\end{equation*}
+
+因此 $R_{\mathbf{n}}(\theta)$ 总可以通过 $R_Y$ 和 $R_Z$ 门的组合来实现，具体参数由 $\mathbf{n}$ 的球坐标 $(\alpha, \beta)$ 和旋转角 $\theta$ 共同确定。
+
+\hfill $\square$
+
+\subsection*{4. State Preparation}
+Starting with all qubits initialized in $\ket{0}$, prepare the following states using single-qubit gates,
+two-qubit gates, ancillary qubits, classical feedback, and measurements. The resource cost
+of the final circuit should be as small as possible. You may optimize for circuit size, circuit
+depth, or both simultaneously.
+
+\begin{enumerate}
+    \item[(a)] Prepare an $n$-qubit quantum state $\frac{1}{\sqrt{2^n}} \sum_{x \in \{0,1\}^n} \ket{x}$;
+    \item[(b)] Prepare an $n$-qubit state $\alpha\ket{000\cdots000} + \sqrt{1-\alpha^2}\ket{111\cdots111}$ for any $\alpha \in \mathbb{R}$;
+    \item[(c)] Prepare the 4-qubit state $\frac{3}{10}\ket{0001} + \frac{2}{5}\ket{0010} + \frac{\sqrt{6}}{4}\ket{0100} + \frac{\sqrt{6}}{4}\ket{1000}$;
+    \item[(d)] (Optional) Prepare the following state:
+    \begin{align*}
+        &\alpha(\ket{1000000}+\ket{0010101}+\ket{1110011}+\ket{0100110} \\
+        &\quad +\ket{1001111}+\ket{0011010}+\ket{1111100}+\ket{0101001}) \\
+        &+\beta(\ket{0111111}+\ket{1101010}+\ket{0001100}+\ket{1011001} \\
+        &\quad +\ket{0110000}+\ket{1100101}+\ket{0000011}+\ket{1010110})
+    \end{align*}
+    \item[(e)] (Optional) Use TensorCircuit to verify your answers.
+\end{enumerate}
+
+\medskip
+\noindent\textbf{Solution:}
+
+\begin{enumerate}
+    \item[(a)] 对 $n$ 个量子比特分别作用 Hadamard 门 $H$ 即可，n个单比特门，必然最优
+
+    \item[(b)] 先对第一个量子比特作用 $R_Y(\theta)$，其中 $\theta = 2\arccos\alpha$ ，使其变为 $\alpha\ket{0} + \sqrt{1-\alpha^2}\ket{1}$ ，然后以第一个量子比特为控制比特，对别的量子比特依次作用CNOT门，1个单比特旋转门和 $n-1$ 个CNOT门
+
+    \item[(c)] 如果不用辅助比特的话应该只能一位一位做，并且需要CCRy和CCCRy，消耗非常大，只要用一个辅助比特就可以比较优雅地完成这个制备，具体步骤如下：\begin{enumerate}
+        \item[(1)] 对第4位作用 $R_Y(\theta_1)$ ，其中 $\theta_1 = 2\arcsin\frac{3}{10}$ ，变成 $\frac{3}{10}\ket{0001} + \frac{\sqrt{91}}{10}\ket{0000}$
+        \item[(2)] 以第4位为控制比特，当其为0时，对第3位作用 $R_Y(\theta_2)$ ，其中 $\theta_2 = 2\arcsin\frac{4}{\sqrt{91}}$ ，变成 $\frac{3}{10}\ket{0001} + \frac{2}{5}\ket{0010} + \frac{\sqrt{3}}{2}\ket{0000}$
+        \item[(3)] 对辅助比特anc作用X门，将其变为 $\ket{1}$ ，分别以第3，4位为控制比特，对anc作用2次CNOT，然后以anc为控制比特，当其为0时，对第2位作用 $R_Y(\frac{\pi}{2})$ ，注意到此时状态为 $\frac{3}{10}\ket{00010} + \frac{2}{5}\ket{00100} + \frac{\sqrt{6}}{4}\ket{01001} + \frac{\sqrt{6}}{4}\ket{00001}$
+        \item[(4)] 以第2位为控制比特，对anc作用CNOT，再以anc为控制比特，对第一位作用CNOT，此时状态为 $\frac{3}{10}\ket{00010} + \frac{2}{5}\ket{00100} + \frac{\sqrt{6}}{4}\ket{01000} + \frac{\sqrt{6}}{4}\ket{10001}$
+        \item[(5)] （还原）以第1位为控制比特，对anc作用CNOT，work done!
+    \end{enumerate}
+    总共是1个辅助比特，4个CNOT，3个CRy，一个X和一个Ry，相比一位一位做有显著提升
+
+    \item[(d)] \begin{enumerate}
+        \item[(1)] 先将后4位变成所有有偶数个1的态的均匀叠加，方法是：先对后3位作用H门，然后分别以后3位为控制比特，对第4位作用CNOT
+        \item[(2)] 对第1位作用一个旋转门，将 $\ket{0}$ 变成 $2\sqrt{2}(\alpha\ket{1} + \beta\ket{0})$ ，此时的态是
+        \begin{align*}
+            &\alpha(\ket{1000000}+\ket{1000101}+\ket{1000011}+\ket{1000110} \\
+            &\quad +\ket{1001111}+\ket{1001010}+\ket{1001100}+\ket{1001001}) \\
+            &+\beta(\ket{0001111}+\ket{0001010}+\ket{0001100}+\ket{0001001} \\
+            &\quad +\ket{0000000}+\ket{0000101}+\ket{0000011}+\ket{0000110})
+        \end{align*}
+        \item[(3)] 将前3位“校正”一下即可，具体地：\begin{enumerate}
+            \item[]对第1位，用第4，5位做CNOT
+            \item[]对第2位，作用X门之后，用第1，5，6位做CNOT
+            \item[]对第3位，作用X门之后，用第1，4，6位做CNOT
+        \end{enumerate}
+    \end{enumerate}
+    共计11个CNOT，6个单量子比特门，无辅助比特
+\end{enumerate}
+
+\hfill $\square$
+
+\subsection*{5. Gate Construction}
+
+\begin{enumerate}
+    \item[(a)] Use CNOT gates to implement the SWAP operation: $\text{SWAP}\ket{\psi}\ket{\phi} = \ket{\phi}\ket{\psi}$.
+    \item[(b)] Consider four qubits $q_0, q_1, q_2$ and $q_3$. Implement two CNOT gates between $q_0$ and $q_2$, and $q_1$ and $q_3$ respectively, under the constraint that only CNOT gates between $q_i$ and $q_{i+1}$ are available. Try to use as few gates as possible.
+    \item[(c)] Use CNOT and $R_Z$ gates to implement the two-qubit gate $R_{ZZ}$, where
+    \begin{equation*}
+        R_Z(\theta) = e^{-i\theta/2 Z}, \qquad R_{ZZ}(\theta) = e^{-i\theta/2 Z\otimes Z}.
+    \end{equation*}
+    \item[(d)] Construct a Controlled-Phase gate
+    \begin{equation*}
+        \begin{pmatrix}
+            1 & 0 & 0 & 0 \\
+            0 & 1 & 0 & 0 \\
+            0 & 0 & 1 & 0 \\
+            0 & 0 & 0 & e^{i\theta}
+        \end{pmatrix}
+    \end{equation*}
+    using $R_{ZZ}$ and single-qubit gates.
+    \item[(e)] For an arbitrary $n$-qubit Pauli operator $P$, construct a circuit to implement $e^{-i\theta P}$.
+    \item[(f)] Implement the following specific $\mathrm{SU}(4)$ gate:
+    \begin{equation*}
+        \begin{bmatrix}
+            \frac{1}{2} & \frac{1}{\sqrt{2}} & \frac{1}{2} & 0 \\[6pt]
+            \frac{1}{\sqrt{2}} & -\frac{1}{2} & \frac{1}{\sqrt{2}} & 0 \\[6pt]
+            \frac{\sqrt{3}}{2\sqrt{2}} & 0 & -\frac{\sqrt{3}}{2\sqrt{2}} & \frac{\sqrt{3}}{2} \\[6pt]
+            \frac{\sqrt{3}}{2\sqrt{2}} & 0 & -\frac{\sqrt{3}}{2\sqrt{2}} & -\frac{1}{2}
+        \end{bmatrix}
+    \end{equation*}
+    using single-qubit pulses and CZ gates.
+    \item[(g)] (Optional) Use TensorCircuit to verify your answer above.
+\end{enumerate}
+
+\subsection*{6. Measurement}
+
+\begin{enumerate}
+    \item[(a)] Construct a quantum circuit to measure the two-qubit operators $Z_1 Z_2$ and $X_1 X_2$ on $\ket{\psi}$ and project $\ket{\psi}$ onto the joint $+1$ eigenstate of $Z_1 Z_2$ and $X_1 X_2$.
+    \item[(b)] Give a general method to construct a quantum circuit to perform projective measurement of any Pauli operator $P$.
+    \item[(c)] Prepare the single-qubit quantum state $\alpha\ket{0} + \sqrt{1-\alpha^2}\ket{1}$ from an $n$-qubit quantum state $\alpha\ket{000\cdots000} + \sqrt{1-\alpha^2}\ket{111\cdots111}$ by measurement.
+    \item[(d)] (Optional) A 5-qubit fanout gate $F_4$ acting on qubits $q_0, q_1, q_2, q_3, q_4$ is defined as follows
+    \begin{equation*}
+        F_4 \ket{x_0}\ket{x_1, x_2, x_3, x_4} = \ket{x_0}\ket{x_1 \oplus x_0, x_2 \oplus x_0, x_3 \oplus x_0, x_4 \oplus x_0},
+    \end{equation*}
+    where $x_0, x_1, \ldots, x_4 \in \{0,1\}$. Two-qubit gates may act only on qubits $(q_j, q_{j+1})$ for $0 \leq j \leq 3$. Construct the quantum circuit of $F_4$ to minimize the circuit depth and size. (Hint: use ancillary qubits and measurements.)
+    \item[(e)] (Optional) Use CNOTs and Hadamards to compute the inner product $|\braket{\psi|\phi}|$ for arbitrary states $\ket{\psi}$ and $\ket{\phi}$.
+\end{enumerate}
+
+\subsection*{7. Reversible Circuit}
+(Optional) Construct a reversible classical circuit using Toffoli and NOT gates to evaluate the formula:
+\begin{align*}
+    S_3(x) = &(\neg x_1 \lor \neg x_2) \land (x_1 \lor \neg x_2) \land (\neg x_1 \lor x_2 \lor \neg x_3) \\
+             &\land (\neg x_1 \lor x_2 \lor x_3) \land (x_1 \lor x_2 \lor x_3),
+\end{align*}
+where each $x_i$ represents a Boolean value, and $\neg$, $\lor$, and $\land$ denote logical NOT, OR, and AND, respectively. Try to: (1) use as few ancillary qubits as possible, and (2) minimize the product of the number of gates and the total number of qubits.
+
+\subsection*{8. Grover Search}
+(Optional) Using the results from the previous problem, find a configuration of $x$ satisfying $S_3(x) = \text{True}$ with Grover's search algorithm. Implement your algorithm using TensorCircuit and verify the solution.
+
+\end{document}
