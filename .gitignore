@@ -17,3 +17,10 @@ miniconda.sh
 
 # macOS
 .DS_Store
+
+# Python
+__pycache__/
+*.pyc
+
+# IDE
+.vscode/
