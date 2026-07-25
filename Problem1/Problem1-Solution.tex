@@ -274,12 +274,32 @@ depth, or both simultaneously.
     \item 测 $Z_1Z_2$：辅助比特 $a_Z\ket{0}$，施加 $\mathrm{CNOT}(q_1\to a_Z)$、$\mathrm{CNOT}(q_2\to a_Z)$，测量 $a_Z$。结果 $m_Z\in\{0,1\}$，本征值 $(-1)^{m_Z}$。此操作不区分 $\ket{00}$ 与 $\ket{11}$（也不区分 $\ket{01}$ 与 $\ket{10}$），故在保持子空间内相干。
     \item 测 $X_1X_2$：对 $q_1,q_2$ 各施 $H$（把 $X$ 旋到 $Z$），再用另一个辅助比特 $a_X$ 做同样的奇偶校验 $\mathrm{CNOT}(q_1\to a_X)$、$\mathrm{CNOT}(q_2\to a_X)$，测量 $a_X$，最后对 $q_1,q_2$ 再施 $H$ 复原。结果 $m_X$，本征值 $(-1)^{m_X}$。
 \end{itemize}
+
+\begin{figure}[H]
+\centering
+\begin{minipage}[t]{0.46\linewidth}\centering
+\includegraphics[width=\linewidth]{figs/q6_a1_zz_measure}\\[2pt]
+{\footnotesize $Z_1Z_2$ 测量}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.46\linewidth}\centering
+\includegraphics[width=\linewidth]{figs/q6_a2_xx_measure}\\[2pt]
+{\footnotesize $X_1X_2$ 测量}
+\end{minipage}
+\caption{（方法一）$Z_1Z_2$ 与 $X_1X_2$ 的非破坏性测量线路：基旋转 $\to$ 奇偶校验 $\to$ 复原。}
+\end{figure}
+
 由于两算符对易，按任意顺序依次测量都会投影到共同本征子空间。\textbf{后选择} $m_Z=0$ 且 $m_X=0$，数据比特即被投影到 $\ket{\Phi^+}$。投影保真地保留了该子空间内的态，因此投影后 $\ket{\psi}\to \ket{\Phi^+}$（重归一化）。成功概率为
 \begin{equation*}
     p_{\text{succ}}=\|\Pi_{++}\ket{\psi}\|^2=|\braket{\Phi^+|\psi}|^2.
 \end{equation*}
 
 \textbf{方法二（Bell 基测量，更紧凑）。} 施加 $\mathrm{CNOT}(q_1\to q_2)$ 再 $H(q_1)$，然后在计算基下测量两个比特。该变换把四个 Bell 态分别映到 $\ket{00},\ket{10},\ket{01},\ket{11}$，特别地 $\ket{\Phi^+}\to\ket{00}$。因此测量结果为 $00$ 即对应投影到共同 $+1$ 本征态 $\ket{\Phi^+}$。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.5\linewidth]{figs/q6_a3_bell_measure}
+\caption{（方法二）Bell 基测量：$\mathrm{CNOT}(q_1\to q_2)$ 后 $H(q_1)$，再测两个比特；结果 $00$ 即投影到 $\ket{\Phi^+}$。}
+\end{figure}
 
 \hfill $\square$
 
@@ -304,6 +324,12 @@ depth, or both simultaneously.
     \item 对支集中每个比特施加 $U_i^\dagger$ 复原（使测量非破坏性：本征子空间内的态不被进一步分辨）。
 \end{enumerate}
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\linewidth]{figs/q6_b_pauli_measure}
+\caption{任意 Pauli 算符 $P=P_1\otimes P_2$ 的投影测量模板：$U_i$（满足 $U_iP_iU_i^\dagger=Z$）$\to$ 奇偶校验 $\to$ $U_i^\dagger$ 复原。}
+\end{figure}
+
 \textbf{正确性。} 旋转后 $P$ 变为 $\widetilde{P}=\bigotimes_{i\in\mathrm{supp}} Z_i$，其本征值是支集上各 $Z$ 本征值之积。各 $\mathrm{CNOT}(i\to a)$ 把 $\ket{1}$ 的个数（即 $z_i=-1$ 的个数）累加到 $a$ 上，故 $a$ 的测量值 $m=\bigoplus_{i\in\mathrm{supp}} b_i$，而 $\widetilde P$ 的本征值 $=\prod_i z_i=(-1)^m$，恰由 $a$ 读出：$m=0\Rightarrow +1$，$m=1\Rightarrow -1$。$U_i^\dagger$ 把态转回原基，所以最终数据寄存器被投影到 $P$ 的 $\pm1$ 本征子空间，且不破坏子空间内的相干性。
 
 \hfill $\square$
@@ -314,6 +340,12 @@ depth, or both simultaneously.
     \ket{\Psi_n}=\alpha\ket{0}_1\ket{0\cdots0}_{2..n}+\sqrt{1-\alpha^2}\,\ket{1}_1\ket{1\cdots1}_{2..n}.
 \end{equation*}
 \textbf{协议：} (i) 对比特 $2,\dots,n$ 各施加 $H$；(ii) 在计算基下测量 $2,\dots,n$，得 $b_2,\dots,b_n\in\{0,1\}$；(iii) 计算奇偶 $s=b_2\oplus\cdots\oplus b_n$，对比特 1 施加受经典控制的 $Z^s$（即 $s=1$ 时施加 $Z$）。完成后比特 1 即为 $\alpha\ket{0}+\sqrt{1-\alpha^2}\,\ket{1}$。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\linewidth]{figs/q6_c_ghz_to_single}
+\caption{（$n=3$ 示意）先制备 GHZ 态，再在 $X$ 基下测量 $q_1,q_2$，按奇偶 $s$ 对 $q_0$ 施加经典前馈 $Z^s$，即得 $\alpha\ket{0}+\sqrt{1-\alpha^2}\ket{1}$。}
+\end{figure}
 
 \textbf{推导。} 用 $\ket{\pm}=\frac{1}{\sqrt2}(\ket0\pm\ket1)$ 与
 \begin{equation*}
@@ -342,6 +374,12 @@ depth, or both simultaneously.
     \item \textbf{经典前馈修正：} 对每个目标 $q_i$（$i=1,\dots,4$）施加受控相位修正 $Z^{m_i\oplus m_0}$（以及对 $q_0$ 的整体相位，不影响计算基输出）。
 \end{enumerate}
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{figs/q6_d_fanout_f4}
+\caption{用 GHZ 猫态辅助比特实现的 $F_4$ 扇出（图中含猫态制备；扇出核心步骤为常数深度）。}
+\end{figure}
+
 \textbf{原理。} GHZ 态 $\frac{1}{\sqrt2}(\ket{0^n}+\ket{1^n})$ 在 $X$ 基下测量时，结果满足偶奇偶 $\bigoplus_i m_i=0$；而把 $\ket{1^n}$ 分支换成 $\ket{1\,0\cdots0}$（即经 $\mathrm{CNOT}(q_0\to a_0)$ 注入控制比特 $x_0$）会把奇偶翻转为 $\bigoplus_i m_i=x_0$。于是 $X$-测量结果的奇偶性携带 $x_0$，相干地“分发”到每个目标；经过 (b) 中标准的相位修正后，净效果为对每个目标施加了 $X^{x_0}$，即
 \begin{equation*}
     q_i:\ x_i\longmapsto x_i\oplus x_0,\qquad i=1,\dots,4,
@@ -356,6 +394,19 @@ depth, or both simultaneously.
     \xrightarrow{H(c)}\ \xrightarrow{\mathrm{cSWAP}(c;\,\psi,\phi)}\ \xrightarrow{H(c)}\ \xrightarrow{\text{测 }c}.
 \end{equation*}
 其中受控交换 $\mathrm{cSWAP}$（Fredkin 门）可分解为 $2$ 个 $\mathrm{CNOT}$ 夹一个 Toffoli：$\mathrm{CNOT}(\psi,\phi)$；$\mathrm{Toffoli}(c,\phi,\psi)$；$\mathrm{CNOT}(\psi,\phi)$，而 Toffoli 又可由 $\mathrm{CNOT}+H$（$+T$ 门）实现。
+
+\begin{figure}[H]
+\centering
+\begin{minipage}[t]{0.46\linewidth}\centering
+\includegraphics[width=\linewidth]{figs/q6_e_swap}\\[2pt]
+{\footnotesize 高层：受控交换门}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.49\linewidth}\centering
+\includegraphics[width=\linewidth]{figs/q6_e_swap_decomposed}\\[2pt]
+{\footnotesize 分解：$2\,\mathrm{CNOT}+\text{Toffoli}$}
+\end{minipage}
+\caption{SWAP 检验线路：左为受控交换门表示，右为 $2\,\mathrm{CNOT}+\text{Toffoli}$ 的门级分解。}
+\end{figure}
 
 \textbf{分析。} 第一个 $H$ 后 $c=\frac{1}{\sqrt2}(\ket0+\ket1)$；$\ket1$ 分支把 $\ket\psi,\ket\phi$ 交换。经第二个 $H$，
 \begin{equation*}

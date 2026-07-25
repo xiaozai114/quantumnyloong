@@ -15,10 +15,9 @@ _txt = open(TEXTFILE, "w", encoding="utf-8")
 
 
 def save(qc, name, title):
-    """绘制线路并以 PNG 保存；title 为图的英文/数学标题。
-    同时把 ASCII/文本版线路写入 q6_circuits.txt，便于核对结构。"""
+    """绘制线路并以 PNG 保存（不带标题，标题由 LaTeX 图题给出）；
+    同时把文本版线路写入 q6_circuits.txt，便于核对结构。"""
     fig = qc.draw(output="mpl", initial_state=True)
-    fig.suptitle(title, fontsize=12)
     path = os.path.join(OUT, name + ".png")
     fig.savefig(path, dpi=DPI, bbox_inches="tight")
     print(f"  已保存：{path}")
