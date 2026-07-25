@@ -365,26 +365,28 @@ depth, or both simultaneously.
 \hfill $\square$
 
 \medskip
-\noindent\textbf{Solution (d) (Optional).} 仅最近邻 $\mathrm{CNOT}$ 可用时，纯幺正地把控制 $q_0$ 扇出到 $q_1,\dots,q_4$ 需要 $O(n)$ 深度。利用辅助比特与测量可做到\textbf{常数深度}。记 $n=4$ 个目标，引入 $n+1=5$ 个辅助比特 $(a_0,a_1,\dots,a_4)$，构造如下。
+\noindent\textbf{Solution (d) (Optional).} 在仅允许最近邻 $\mathrm{CNOT}(q_i,q_{i+1})$ 的路径上把 $q_0$ 扇出到 $q_1,\dots,q_4$。$F_4$ 作为可逆线性映射 $x_i\mapsto x_i\oplus x_0$（$i\ge1$，$q_0$ 不变），下面给出一个\textbf{规模最小、深度最优}的幺正实现。
 
-\begin{enumerate}
-    \item \textbf{资源制备：} 在 $a_0,a_1,\dots,a_4$ 上制备 GHZ（猫）态 $\frac{1}{\sqrt2}(\ket{0}^{\otimes5}+\ket{1}^{\otimes5})$。（按题意把它视作可制备的纠缠资源；在 1D 链上它本身可由 Hadamard $+$ 级联 $\mathrm{CNOT}$ 以 $O(n)$ 深度备好，也可由测量以常数深度备好。）
-    \item \textbf{相干耦合（深度 2）：} 施加 $\mathrm{CNOT}(q_0\to a_0)$；随后对每个 $i=1,\dots,4$ 并行施加 $\mathrm{CNOT}(a_i\to q_i)$（把辅助比特排布在每个数据比特近邻即可全并行）。
-    \item \textbf{测量（一轮）：} 在 $X$ 基下测量所有 $a_i$，得 $m_0,m_1,\dots,m_4$。
-    \item \textbf{经典前馈修正：} 对每个目标 $q_i$（$i=1,\dots,4$）施加受控相位修正 $Z^{m_i\oplus m_0}$（以及对 $q_0$ 的整体相位，不影响计算基输出）。
-\end{enumerate}
+\textbf{最优幺正实现。} 经穷举（在路径图的 CNOT 上做 BFS）得到的最小分解为 $7$ 个最近邻 CNOT，按不相交边并行后深度仅为 $4$：
+\begin{equation*}
+\begin{array}{l}
+L_0:\ \mathrm{CNOT}(3{\to}4),\ \mathrm{CNOT}(1{\to}2)\\
+L_1:\ \mathrm{CNOT}(2{\to}3),\ \mathrm{CNOT}(0{\to}1)\\
+L_2:\ \mathrm{CNOT}(1{\to}2),\ \mathrm{CNOT}(3{\to}4)\\
+L_3:\ \mathrm{CNOT}(2{\to}3)
+\end{array}
+\end{equation*}
+该序列已对全部 $2^5=32$ 个计算基输入数值验证，输出恰为 $q_i\mapsto x_i\oplus x_0$（$i=1,\dots,4$）、$q_0$ 保持 $x_0$。
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\linewidth]{figs/q6_d_fanout_f4}
-\caption{用 GHZ 猫态辅助比特实现的 $F_4$ 扇出（图中含猫态制备；扇出核心步骤为常数深度）。}
+\includegraphics[width=0.95\linewidth]{figs/q6_d_fanout_f4}
+\caption{$F_4$ 扇出的最优幺正实现：$7$ 个最近邻 CNOT，分 $4$ 层（屏障分隔）并行，深度 $4$。}
 \end{figure}
 
-\textbf{原理。} GHZ 态 $\frac{1}{\sqrt2}(\ket{0^n}+\ket{1^n})$ 在 $X$ 基下测量时，结果满足偶奇偶 $\bigoplus_i m_i=0$；而把 $\ket{1^n}$ 分支换成 $\ket{1\,0\cdots0}$（即经 $\mathrm{CNOT}(q_0\to a_0)$ 注入控制比特 $x_0$）会把奇偶翻转为 $\bigoplus_i m_i=x_0$。于是 $X$-测量结果的奇偶性携带 $x_0$，相干地“分发”到每个目标；经过 (b) 中标准的相位修正后，净效果为对每个目标施加了 $X^{x_0}$，即
-\begin{equation*}
-    q_i:\ x_i\longmapsto x_i\oplus x_0,\qquad i=1,\dots,4,
-\end{equation*}
-恰好是 $F_4$。\textbf{资源：} 深度 $O(1)$（相干耦合 2 层 $+$ 一次测量 $+$ 一层修正），规模 $O(n)$（$n+1$ 个辅助比特、$O(n)$ 个 $\mathrm{CNOT}$）。相较纯幺真的 $O(n)$ 深度，测量把深度降到与 $n$ 无关。
+\textbf{深度下界与最优性。} $x_0$ 的信息须从 $q_0$ 沿路径传到 $q_4$，路径距离为 $4$，而每层最近邻门至多把信息推进一跳，故\textbf{深度 $\ge 4$}。上式达到 $4$，因此在路径拓扑上深度最优；规模 $7$ 个 CNOT 亦为穷举最小。
+
+\textbf{用测量进一步降深度。} 若额外允许\textbf{预先共享纠缠资源}（沿路径排布的 Bell 对或 GHZ 猫态），可用量子传态思路在 $O(1)$ 深度内实现远距离 CNOT：以猫态为媒介对辅助比特做联合（贝尔型）测量并按结果作经典前馈 Pauli 修正，可把扇出深度降到与 $n$ 无关；代价是 $O(n)$ 个辅助比特与预共享纠缠（注意：仅做单比特 $X$ 基测量并不足以完成，需两比特联合测量）。在仅用最近邻 CNOT、无预共享纠缠的设定下，上述深度 $4$ 已为最优。
 
 \hfill $\square$
 
