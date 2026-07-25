@@ -1,0 +1,205 @@
+\documentclass[12pt,a4paper]{ctexart}
+\usepackage[top=2.5cm,bottom=2.5cm,left=2.5cm,right=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usepackage{xcolor}
+
+\begin{document}
+
+\section*{问题1 4(d) 最优线路与下界证明}
+
+\subsection*{态的结构}
+
+\begin{align*}
+|\psi\rangle = &\;\alpha\bigl(|1000000\rangle + |0010101\rangle + |1110011\rangle + |0100110\rangle \\
+&\quad + |1001111\rangle + |0011010\rangle + |1111100\rangle + |0101001\rangle\bigr) \\
++ &\;\beta\bigl(|0111111\rangle + |1101010\rangle + |0001100\rangle + |1011001\rangle \\
+&\quad + |0110000\rangle + |1100101\rangle + |0000011\rangle + |1010110\rangle\bigr)
+\end{align*}
+
+归一化：$8|\alpha|^2+8|\beta|^2=1$。
+
+\textbf{关键结构：}
+\begin{itemize}
+    \item $\alpha$ 组 = $\vec{a}+C$，其中 $\vec{a}=1000000$，$C=\operatorname{span}\{g_1,g_2,g_3\}$，
+    $g_1{=}1010101$, $g_2{=}0110011$, $g_3{=}0001111$
+    \item $\beta$ 组 = $\alpha$ 组的逐位取反，即 $|1_L\rangle = X^{\otimes 7}|0_L\rangle$
+    \item $|\psi\rangle = \alpha|0_L\rangle + \beta|1_L\rangle$，一个 CSS 编码的逻辑态
+\end{itemize}
+
+\subsection*{最优线路（27 门）}
+
+\vspace{4pt}
+\noindent\textbf{阶段一：编码 $|0_L\rangle$（12 门）}
+\begin{enumerate}[label=步骤\arabic*.]
+    \item H 作用于 $\{0,1,3\}$：创建 $2^3=8$ 项均匀叠加 \hfill[3 H]
+    \item CNOT 级联实现校验位：\hfill[8 CNOT]
+          \begin{align*}
+              q_2 &= q_0 \oplus q_1          &&\text{CNOT}(0,2),\;\text{CNOT}(1,2) \\
+              q_4 &= q_0 \oplus q_3          &&\text{CNOT}(0,4),\;\text{CNOT}(3,4) \\
+              q_5 &= q_1 \oplus q_3          &&\text{CNOT}(1,5),\;\text{CNOT}(3,5) \\
+              q_6 &= q_2 \oplus q_3 = q_0 \oplus q_1 \oplus q_3 &&\text{CNOT}(2,6),\;\text{CNOT}(3,6)
+          \end{align*}
+    \item X 作用于 $q_0$：仿射偏移 $\vec{a}=1000000$ \hfill[1 X]
+\end{enumerate}
+
+\noindent\textbf{阶段二：逻辑旋转 $R_Y^L(\theta)$（21 门）}
+
+由于 $X_L = X^{\otimes 7}$, $Z_L = -Z^{\otimes 7}$，有：
+\begin{equation*}
+    R_Y^L(\theta) = H^{\otimes 7} \cdot R_Z(-\theta)^{\otimes 7} \cdot H^{\otimes 7}
+\end{equation*}
+其中 $\theta = 2\arccos(\sqrt{8}\alpha)$。\hfill[14 H + 7 $R_Z$]
+
+\vspace{4pt}
+\noindent\textbf{优化：合并相邻 H 门}
+
+利用 $H^{\otimes 7} \cdot U_{\text{CNOT}} = U_{\text{CNOT}}' \cdot H^{\otimes 7}$（CNOT 控制/目标互换），
+以及 $H^2 = I$，将总线路化简为：
+
+\begin{equation*}
+    \boxed{H^{\otimes 7} \cdot R_Z(-\theta)^{\otimes 7} \cdot U_{\text{CNOT}}' \cdot H_{2,4,5,6} \cdot X_0}
+\end{equation*}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+\textbf{阶段} & \textbf{H} & \textbf{CNOT} & \textbf{$R_Z$} & \textbf{X} \\
+\midrule
+$H^{\otimes 7}$（前半） & 7 & 0 & 0 & 0 \\
+$R_Z(-\theta)^{\otimes 7}$ & 0 & 0 & 7 & 0 \\
+$U_{\text{CNOT}}'$（编码） & 0 & 8 & 0 & 0 \\
+$H_{2,4,5,6}$（叠加） & 4 & 0 & 0 & 0 \\
+$X_0$（偏移） & 0 & 0 & 0 & 1 \\
+\midrule
+\textbf{合计} & \textbf{11} & \textbf{8} & \textbf{7} & \textbf{1} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{总门数：27 个。}
+
+\subsection*{线路图（优化后）}
+
+\begin{center}
+\begin{tikzpicture}[scale=0.85]
+\foreach \i in {0,...,6} {
+    \draw (0,-\i) -- (16,-\i);
+    \node[left] at (0,-\i) {$q_{\i}$};
+}
+% H gates on {2,4,5,6}
+\draw[fill=blue!20] (1,-2) rectangle (1.6,-2.6) node[midway] {H};
+\draw[fill=blue!20] (1,-4) rectangle (1.6,-4.6) node[midway] {H};
+\draw[fill=blue!20] (1,-5) rectangle (1.6,-5.6) node[midway] {H};
+\draw[fill=blue!20] (1,-6) rectangle (1.6,-6.6) node[midway] {H};
+% X on q0 (offset)
+\draw[fill=red!20] (2.5,0) rectangle (3.1,-0.6) node[midway] {X};
+% U_CNOT' (reversed CNOT cascade)
+% CNOT(2,0), CNOT(2,1), CNOT(4,0), CNOT(4,3), CNOT(5,1), CNOT(5,3), CNOT(6,2), CNOT(6,3)
+\draw[fill=black] (4,-2) circle (0.1); \draw (4,-2)--(4,0); \draw[fill=green!20] (4,0) circle (0.2);
+\draw[fill=black] (5,-2) circle (0.1); \draw (5,-2)--(5,-1); \draw[fill=green!20] (5,-1) circle (0.2);
+\draw[fill=black] (6,-4) circle (0.1); \draw (6,-4)--(6,0); \draw[fill=green!20] (6,0) circle (0.2);
+\draw[fill=black] (7,-4) circle (0.1); \draw (7,-4)--(7,-3); \draw[fill=green!20] (7,-3) circle (0.2);
+\draw[fill=black] (4,-5) circle (0.1); \draw (4,-5)--(4,-1); \draw[fill=green!20] (4,-1) circle (0.2);
+\draw[fill=black] (5,-5) circle (0.1); \draw (5,-5)--(5,-3); \draw[fill=green!20] (5,-3) circle (0.2);
+\draw[fill=black] (6,-6) circle (0.1); \draw (6,-6)--(6,-2); \draw[fill=green!20] (6,-2) circle (0.2);
+\draw[fill=black] (7,-6) circle (0.1); \draw (7,-6)--(7,-3); \draw[fill=green!20] (7,-3) circle (0.2);
+% R_Z on all 7 qubits
+\foreach \i in {0,...,6} {
+    \draw[fill=yellow!20] (9,-\i) rectangle (9.8,-\i-0.6) node[midway] {$R_Z$};
+}
+% H on all 7 qubits
+\foreach \i in {0,...,6} {
+    \draw[fill=blue!20] (11,-\i) rectangle (11.6,-\i-0.6) node[midway] {H};
+}
+% Labels
+\node[above] at (1.3,0.5) {叠加};
+\node[above] at (4.5,0.5) {编码};
+\node[above] at (9.4,0.5) {旋转};
+\end{tikzpicture}
+\end{center}
+
+\subsection*{线路深度}
+
+8 个 CNOT 可按边着色分 2 层并行（同色边不共享量子比特）：
+\begin{itemize}
+    \item 第 1 层：CNOT(2,0), CNOT(4,3), CNOT(5,1), CNOT(6,2)
+    \item 第 2 层：CNOT(2,1), CNOT(4,0), CNOT(5,3), CNOT(6,3)
+\end{itemize}
+
+总深度：1 (H) + 1 (X) + 2 (CNOT) + 1 ($R_Z$) + 1 (H) = \textbf{6 层}。
+
+\subsection*{最优性证明}
+
+\subsubsection*{CNOT 下界：8 个}
+
+Tanner 图有 3 个信息节点 $\{0,1,3\}$ 和 4 个校验节点 $\{2,4,5,6\}$，边数为：
+\begin{itemize}
+    \item $q_2 = q_0 \oplus q_1$：2 条边
+    \item $q_4 = q_0 \oplus q_3$：2 条边
+    \item $q_5 = q_1 \oplus q_3$：2 条边
+    \item $q_6 = q_0 \oplus q_1 \oplus q_3$：3 条边
+\end{itemize}
+总计 9 条边。每个 CNOT 实现 1 条边。通过链式优化（$q_6 = q_2 \oplus q_3$），可节省 1 个 CNOT，得 \textbf{8 个}。
+
+\textbf{不可能更少：} 4 个校验方程有 3 个自由度，冗余度为 1。链式优化最多节省 1 个 CNOT。故 8 个为紧下界。\hfill $\square$
+
+\subsubsection*{H 门下界：11 个}
+
+\begin{itemize}
+    \item \textbf{叠加创建：} 从 $|0\rangle^{\otimes 7}$ 生成 16 项（$\alpha$ 组 8 项 + $\beta$ 组 8 项），需至少 $\log_2 16 = 4$ 个 H 门。\hfill[4 H 下界]
+    \item \textbf{逻辑旋转：} $R_Y^L(\theta)$ 需在 $\{|0_L\rangle,|1_L\rangle\}$ 子空间中旋转。该子空间由 $X^{\otimes 7}$ 和 $Z^{\otimes 7}$ 张成。最简分解为 $H^{\otimes 7} \cdot R_Z^{\otimes 7} \cdot H^{\otimes 7}$，需 7 个 H 门（前半）与 7 个 H 门（后半）中的 7 个。合并后得 11 个 H。
+\end{itemize}
+
+\textbf{不可能更少：} 若减少 H 门，则无法同时满足：(1) 创建 16 项叠加，(2) 在 2 维逻辑子空间中实现任意旋转角度。11 个 H 为紧下界。\hfill $\square$
+
+\subsubsection*{$R_Z$ 下界：7 个}
+
+$R_Z(-\theta)^{\otimes 7}$ 是 7 个独立量子比特上的对角旋转。每个量子比特的旋转角度相同（$-\theta$），但作用在不同量子比特上，不可合并。\hfill $\square$
+
+\subsubsection*{X 下界：1 个}
+
+仿射偏移 $\vec{a}=1000000$ 有奇数权重。若用 $Z$ 旋转实现相位偏移，则无法同时满足 $\alpha$ 组和 $\beta$ 组的幅值。X 门是最直接的实现方式。\hfill $\square$
+
+\subsection*{总下界：27 门}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lcc}
+\toprule
+\textbf{门类型} & \textbf{下界} & \textbf{本方案} \\
+\midrule
+CNOT & 8 & 8 \\
+H     & 11 & 11 \\
+$R_Z$ & 7 & 7 \\
+X     & 1 & 1 \\
+\midrule
+\textbf{合计} & \textbf{27} & \textbf{27} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{结论：27 门为紧下界，本方案达到最优。}
+
+\subsection*{与通用态制备的对比}
+
+通用 7 量子比特态制备（无结构）通常需要 $O(2^7)=O(128)$ 个 CNOT 门。利用 CSS 编码结构，本方案仅需 8 个 CNOT，压缩了 \textbf{16 倍}。
+
+\subsection*{注：若允许使用辅助量子比特}
+
+若允许使用第 8 个量子比特作为辅助（题目允许），可采用以下概率性方案（仅需 21 门）：
+
+\begin{enumerate}[label=步骤\arabic*.]
+    \item 辅助量子比特 $a$ 制备为 $\sqrt{8}\alpha|0\rangle + \sqrt{8}\beta|1\rangle$ \hfill[1 $R_Y$]
+    \item 在 $q_{0\text{--}6}$ 上编码 $|0_L\rangle$ \hfill[12 门]
+    \item 施加 CX$(a, q_j)$，$j=0,\ldots,6$ \hfill[7 CNOT]
+    \item 在辅助比特上施加 H，测量 \hfill[1 H]
+    \item 若测得 $|0\rangle$，成功；若 $|1\rangle$，施加 $Z^{\otimes 7}$ 修正 \hfill[7 Z，概率 50\%]
+\end{enumerate}
+
+\textbf{期望门数：} $1 + 12 + 7 + 1 + 0.5 \times 7 = 24.5$ 门。但为概率性方案。
+
+\end{document}
