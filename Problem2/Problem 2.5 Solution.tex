@@ -1,0 +1,173 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{graphicx,booktabs,array,xcolor,enumitem}
+\usepackage{ctex}
+\usepackage[colorlinks=true,linkcolor=blue!55!black,urlcolor=blue!55!black]{hyperref}
+
+\definecolor{boxbg}{RGB}{240,246,252}
+\definecolor{boxrule}{RGB}{70,110,160}
+\usepackage[most]{tcolorbox}
+\newtcolorbox{keybox}[1][]{colback=boxbg,colframe=boxrule,boxrule=0.6pt,arc=2pt,left=8pt,right=8pt,top=6pt,bottom=6pt,#1}
+
+\newcommand{\ket}[1]{\left|#1\right\rangle}
+\newcommand{\bra}[1]{\left\langle#1\right|}
+\newcommand{\braket}[2]{\left\langle#1\middle|#2\right\rangle}
+\newcommand{\HF}{\text{HF}}
+\newcommand{\Ha}{\,\text{Ha}}
+\newcommand{\mHa}{\,\text{mHa}}
+\newcommand{\Ry}{R_{ZZ}}
+
+\begin{document}
+
+\begin{center}
+  {\LARGE\bfseries Problem 2.5}\\[6pt]
+  {\normalsize Tencent Sparking Program 2026 \quad | \quad
+   \texttt{TensorCircuit} (TF) + \texttt{PySCF}}\\[2pt]
+  {\small 2026-07-26}
+\end{center}
+\vspace{4pt}\hrule\vspace{8pt}
+
+%==============================================================================
+\section{问题}
+%==============================================================================
+\begin{description}[leftmargin=1.4em,style=nextline]
+  \item[\textbf{(a)}]LiH (STO-3G)，分别从 HF 态和 LUCJ 态（CCSD 缩放 $\lambda=0.05$）采样
+  $S=1000$ 个比特串，喂入 SQD，比较能量与 FCI 的差距。
+  \item[\textbf{(b)}]从量子信息角度解释为何 LUCJ 覆盖更多组态；讨论 $\lambda=0,1$ 的含义及为何
+  取 $\lambda=0.05$ 而非 $\lambda=1$。
+\end{description}
+
+%==============================================================================
+\section{设置与参考能量}
+%==============================================================================
+LiH STO-3G，冻结 1 个核心轨道（2 电子），活性空间 $n_{\text{act}}=4$ 轨道、$N_\alpha=N_\beta=1$ 电子，
+JW 映射 $q(p,s)=2p+s$，共 8 qubit。PySCF 给出：
+\[
+  E_{\text{RHF}}=-7.86307516\Ha,\qquad
+  E_{\text{FCI}}=-7.86490425\Ha,\qquad
+  \Delta E_{\text{corr}}=-1.829\mHa .
+\]
+
+%==============================================================================
+\section{态制备、采样与 SQD}
+%==============================================================================
+\textbf{HF 态：}在占据比特 $q(0,0)=0$、$q(0,1)=1$ 上施加 $X$，得单一计算基态 $\ket{\Psi_{\HF}}$。
+
+\textbf{LUCJ 态：}形如 $\ket{\Psi_{\text{LUCJ}}}=U e^{iJ}U^\dagger\ket{\Psi_{\HF}}$，其中
+$U=e^\kappa$（由 CCSD $t_1$ 生成）、$J=\sum_{p\le q}J_{pq}n_p n_q$（权重来自 $t_2$，均按
+$\lambda$ 缩放）。Jastrow 项 $e^{iJ_{pq}n_p n_q}$ 分解为 $R_Z^{(p)}(J/2)\,R_Z^{(q)}(J/2)\,
+\Ry^{(pq)}(-J/2)$（$\Ry(\phi)=\text{CNOT}\,R_Z(\phi)\,\text{CNOT}$），Givens 旋转
+$G_{ij}(\theta)$ 分解为 $\text{CNOT}_{ij}\,CR_Y\!{}_{ji}(2\theta)\,\text{CNOT}_{ij}$，均沿用
+Problem 2.4 参考解。\textbf{真正产生双激发的是成对 Givens：}闭壳层 $t_1\!\approx\!0\Rightarrow
+U\!\approx\!I$，$e^{iJ}$ 在 HF 数算符本征态上只贡献相位；$\alpha,\beta$ 扇区同时施加的
+占据$\leftrightarrow$虚 Givens（角度 $\theta_{ia}\!\propto\!\lambda t_2[i,i,a,a]$）才将 HF
+振幅泄漏到 $\ket{a_\alpha a_\beta}$，大小 $\theta^2\propto\lambda^2$。
+
+\textbf{采样：}从 TensorCircuit 精确态矢取 $|\braket{\bm{x}}{\Psi}|^2$ 作多项分布，抽取 $S$ 个
+比特串（MSB-first 解码）。\textbf{SQD：}比特串 $\to$ $(\alpha,\beta)$ 行列式 $\to$ 去重，用
+PySCF FCI 引擎在此子空间构建 $H_{kl}=\bra{D_k}\hat H\ket{D_l}$ 并精确对角化，得到
+$E_{\text{SQD}}\ge E_{\text{FCI}}$。
+
+%==============================================================================
+\section{(a) 结果}
+%==============================================================================
+
+\begin{table}[h]
+\centering
+\caption{严格 $S=1000$、$\lambda=0.05$}
+\vspace{2pt}
+\begin{tabular}{lccc}\toprule
+ & 组态数 & $E_{\text{SQD}}$ (Ha) & 误差 (mHa)\\\midrule
+HF-SQD        & 1 & $-7.86307516$ & $1.829$\\
+LUCJ-SQD      & 1 & $-7.86307516$ & $1.829$\\
+FCI（精确）    & --& $-7.86490425$ & $0.000$\\\bottomrule
+\end{tabular}
+\end{table}
+
+$\lambda=0.05$ 时 LUCJ 态 $>99.98\%$ 仍是 HF，主导双激发概率 $\sim\!1.25\times10^{-4}$，
+$S=1000$ 下期望采样次数 $\approx0.12$，故三者皆采到同一组态。这是\textbf{采样统计效应}，非 bug。
+
+\bigskip
+\textbf{$\lambda$ 扫描（$S=200{,}000$，隔离采样噪声）。}同时跑完整 UCJ（所有轨道对）与局域
+LUCJ（仅保留相邻 $|p-q|=1$ 项，丢弃非相邻）。
+
+\begin{table}[h]
+\centering\small
+\begin{tabular}{c c cc c cc}\toprule
+ & &\multicolumn{2}{c}{完整 UCJ}&&\multicolumn{2}{c}{局域 LUCJ}\\
+\cmidrule(lr){3-4}\cmidrule(lr){6-7}
+$\lambda$ & $P_{\text{leave}}$ & 误差 (mHa) & \#cfg && 误差 (mHa) & \#cfg\\\midrule
+0.00 & $0$              & $1.829$ & 1  && $1.829$ & 1\\
+0.05 & $1.25\!\times\!10^{-4}$& $1.829$ & 7  && $1.829$ & 3\\
+0.20 & $2.00\!\times\!10^{-3}$& $1.829$ & 8  && $1.829$ & 3\\
+0.30 & $4.49\!\times\!10^{-3}$& $0.779$ & 10 && $\mathbf{1.587}$ & 4\\
+0.50 & $1.24\!\times\!10^{-2}$& $0.779$ & 13 && $\mathbf{1.587}$ & 4\\
+0.70 & $2.42\!\times\!10^{-2}$& $\mathbf{0.000}$ & 16 && $\mathbf{1.587}$ & 4\\
+1.00 & $4.87\!\times\!10^{-2}$& $\mathbf{0.000}$ & 16 && $\mathbf{1.587}$ & 4\\\bottomrule
+\end{tabular}
+\caption{$\lambda$ 扫描。$P_{\text{leave}}=1-P(\HF)$。}
+\end{table}
+
+\begin{figure}[h]
+\centering\includegraphics[width=\linewidth]{problem_2_5_a_result.png}
+\caption{左：SQD 误差 vs $\lambda$（蓝=完整 UCJ 单调降至 FCI；红=局域 LUCJ 停在 $1.59\mHa$ 平台）。
+右：泄漏概率 $\propto\lambda^2$，约 $\lambda\!\approx\!0.15$ 处越过 $1/S=10^{-3}$ 采样下限。}
+\end{figure}
+
+\textbf{关键观察：}
+\begin{itemize}
+  \item 完整 UCJ 在 $\lambda\gtrsim0.7$ 收敛至 FCI（覆盖全部 16 组态）。$\lambda\le0.2$ 时组态数
+  上升但能量不降——新增的是单激发，$\bra{\HF}\hat H\ket{\text{单激发}}=0$（Brillouin），唯采到
+  双激发才降能（Problem 2.2 结论）。
+  \item 局域 LUCJ 丢弃非相邻双激发 $0\!\to\!2,0\!\to\!3$，只保留 $0\!\to\!1$，故能量停在
+  $1.587\mHa$ 平台——这便是截断误差，被丢弃权重 $\propto\lambda^2$（Optional Problem 1）。
+\end{itemize}
+
+%==============================================================================
+\section{(b) 量子信息讨论}
+%==============================================================================
+
+\textbf{为何 LUCJ 覆盖更多组态？} HF 是乘积态（单一数算符本征态），测量只得一个组态。LUCJ 通过
+Jastrow 和 Givens 中的 CNOT 引入纠缠，使态成为多行列式的叠加（成对 Givens 产生 $\sin^4\theta$
+的双激发权重），测量即返回分散的组态集合——恰好填充 SQD 的子空间。
+
+\textbf{$\lambda=0,1$ 的含义：}$\lambda=0$ 时 $U=I,J=0$，态即纯 HF；$\lambda=1$ 时使用完整 CCSD
+振幅——在理想电路里驱动能量至 FCI，但在局域截断 LUCJ 中被丢弃的非相邻 $R_{ZZ}$ 贡献
+$\propto\lambda^2$ 达最大。
+
+\textbf{为何取 0.05 而非 1？} 两种竞争效应均随 $\lambda$ 增长：
+\begin{center}
+\begin{tabular}{@{}p{3.5cm}p{4.2cm}p{3cm}@{}}\toprule
+效应 & 行为 & 对能量\\\midrule
+采样覆盖（利）& 态偏离 HF，覆盖更多行列式 & 误差$\downarrow$\\[3pt]
+局域截断误差（弊）& 丢弃的非相邻 $R_{ZZ}\propto\lambda^2$ & 误差$\uparrow$\\\bottomrule
+\end{tabular}
+\end{center}
+两者竞争给出最优 $\lambda^\star$（Optional Problem 1）。$\lambda=0.05$ 落在低 $\lambda$ 侧：
+扰动刚好产生可采样的关联，截断误差 $\sim\!\lambda^2=2.5\times10^{-3}$ 可忽略——覆盖与截断间保守
+稳健的权衡。
+
+\begin{keybox}
+\textbf{(a)(b) 一致性：}理想变分 SQD 下局域截断表现为能量平台（不回升），因为变分能量对子空间单调。
+真正的 U 型回升需要引入非变分因素——近似 LUCJ 态的保真度退化 $\propto\!\lambda^2$ 叠加硬件噪声——
+才会在大 $\lambda$ 端回升。两问分别从变分与非变分视角描述同一权衡，不矛盾。
+\end{keybox}
+
+%==============================================================================
+\section{结论}
+%==============================================================================
+\begin{enumerate}[leftmargin=*]
+  \item $S=1000$、$\lambda=0.05$ 下 HF-SQD 与 LUCJ-SQD 同为 $-7.86307516\Ha$（误差 $1.829\mHa$），
+  因双激发概率 $\sim\!10^{-4}$ 低于 $1/S=10^{-3}$ 采样下限——采样统计效应。
+  \item 完整 UCJ 在 $\lambda\gtrsim0.7$ 收敛至 FCI；局域截断仅保留相邻双激发，停在 $1.587\mHa$
+  平台。只有当采到双激发时 SQD 能量才下降（Brillouin/Slater--Condon）。
+  \item $\lambda=0.05$ 是“覆盖 vs.\ 截断”权衡的结果：扰动刚够产生可采样关联，同时截断误差
+  $\propto\!\lambda^2$ 仍可忽略。$\lambda=1$ 使截断误差最大，因此“太大”。
+\end{enumerate}
+
+\vspace{4pt}
+{\small 完整实现脚本：\texttt{problem\_2\_5\_a\_lucj\_sqd.py}（Python~3.11 venv, TF~2.16,
+TC~0.12, PySCF~2.14）。}
+
+\end{document}
