@@ -1,0 +1,80 @@
+\documentclass{ctexart}
+
+% 中文支持由 ctexart 文档类自动提供
+
+% 页面设置
+\usepackage[top=2.54cm, bottom=2.54cm, left=3.18cm, right=3.18cm]{geometry}
+
+% 数学公式
+\usepackage{amsmath, amssymb, amsthm}
+
+% 图形与表格
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+
+% 超链接
+\usepackage{hyperref}
+
+% 量子态和算符
+\usepackage{bm}
+\newcommand{\ket}[1]{|#1\rangle}
+\newcommand{\bra}[1]{\langle #1|}
+\newcommand{\braket}[2]{\langle #1|#2\rangle}
+
+\begin{document}
+
+\noindent{7.} \textbf{FCI Space Explosion and EWF's Scaling Advantage}
+
+\noindent{FCI} dimension $\binom{2n}{N_e}$ grows exponentially. EWF splits into $F$ fragments, each with $n_{\text{frag}}$ orbitals and $N_{\text{frag}}$ electrons, solved independently.
+
+\noindent\textbf{Given:} Test molecules (a)–(e). C$_{2}$H$_{4}$'s EWF max fragment: 20 qubits ($n_{\text{frag}}=10$).
+
+\noindent\textbf{Solve:} \begin{enumerate}
+
+\item[(a)] Compute FCI dimensions for all 5 molecules, tabulate, observe trend.
+
+\item[(b)] Prove: fixed $n_{\text{frag}}$, $F = N/n_{\text{frag}} \rightarrow$ EWF cost $O(N)$.
+
+\item[(c)] Compute C$_{2}$H$_{4}$ max fragment FCI dimension, compare with full $\sim 3.1 \times 10^7$.
+
+\item[(d)] Derive crossover: direct FCI $O\bigl(\binom{2N}{N_e}^3\bigr)$ vs. EWF $F \times O\bigl(\binom{2n_{\text{frag}}}{N_{\text{frag}}}^3\bigr)$. At what $n_{\text{frag}}$ are they equal?
+
+\end{enumerate}
+
+\noindent{Advanced Challenge:} Under 20-qubit NISQ constraint ($n_{\text{frag}} \leq 10$), optimal $n_{\text{frag}}$ for N$_2$ and C$_2$H$_4$?
+
+\medskip
+\noindent\textbf{Solution:} \begin{enumerate}
+
+\item[(a)] 直接计算即可，H$_2$是$\binom{4}{2}=6$，LiH是$\binom{8}{4}=70$，H$_2$O是$\binom{14}{10}=1001$，N$_2$是$\binom{20}{14}=38760$，C$_2$H$_4$是$\binom{28}{16}=30421755$
+
+\item[(b)] 当 \(n_{\text{frag}}\) 固定时，每个片段的 FCI 维数$\binom{2n_{\text{frag}}}{N_{\text{frag}}}$
+有上界，其对角化代价为 $O(D_{\text{frag}}^3)=O(1)$，片段总数为$F = N/n_{\text{frag}}$，所以 EWF 总代价为$O(N)$
+
+\item[(c)] C$_2$H$_4$最大碎片为20量子比特，该碎片的FCI的维数最大是$\binom{20}{10}=184756$，全分子的FCI的维数最大是30421755，二者之比
+\[
+\frac{184756}{30421755}\approx 0.6\%
+\]
+
+\item[(d)] 假设电子均匀地分布在每个碎片中，得到方程
+\[
+\binom{2n_{\text{frag}}}{N_e n_{\text{frag}}/N}
+=
+\binom{2N}{N_e}
+\left(\frac{n_{\text{frag}}}{N}\right)^{1/3}
+\]
+
+我们来证明：对于$n_\text{frag}<N$，左边总是比右边小很多倍，进而EWF总是比直接的FCI需要更少的时间复杂度（显然当$n_\text{frag}=N$时是相等的）
+
+设$\frac{N}{n_\text{frag}}=t$，把左边的组合数记为$\binom{a}{b}$，有如下推导：
+\[
+\binom{2N}{N_e}=\binom{ta}{tb}=\prod_{i=1}^{tb}\frac{ta-i+1}{tb-i+1}=\prod_{\substack{i=1\\t\nmid i-1}}^{n}\frac{ta-i+1}{tb-i+1}\cdot\binom{a}{b}\geq(ta-tb+1)\binom{a}{b}>\sqrt[3]{t}\binom{a}{b}
+\]
+证明完毕
+
+\end{enumerate}
+
+\hfill \(\square\)
+
+\end{document}
