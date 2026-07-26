@@ -20,7 +20,7 @@
 \usepackage{bm}
 \newcommand{\ket}[1]{|#1\rangle}
 \newcommand{\bra}[1]{\langle #1|}
-\newcommand{\braket}[2]{\langle #1|#2\rangle}
+\newcommand{\braket}[1]{\langle #1\rangle}
 
 % 标题设置
 \title{Problem 1: Preliminaries and Warm-up}
@@ -346,7 +346,7 @@ depth, or both simultaneously.
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.7\linewidth]{figs/q6_c_ghz_to_single}
-\caption{（$n=3$ 示意）先制备 GHZ 态，再在 $X$ 基下测量 $q_1,q_2$，按奇偶 $s$ 对 $q_0$ 施加经典前馈 $Z^s$，即得 $\alpha\ket{0}+\sqrt{1-\alpha^2}\ket{1}$。}
+\caption{（$n=3$ 示意）图中先制备 GHZ 型输入态，再在 $X$ 基下测量 $q_1,q_2$，按奇偶 $s$ 对 $q_0$ 施加经典前馈 $Z^s$，即得 $\alpha\ket{0}+\sqrt{1-\alpha^2}\ket{1}$。}
 \end{figure}
 
 \textbf{推导。} 用 $\ket{\pm}=\frac{1}{\sqrt2}(\ket0\pm\ket1)$ 与
