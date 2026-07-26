@@ -80,4 +80,34 @@ $\Delta E_{\text{corr},f}$ 只涉及碎片 $f$ 的嵌入空间（碎片轨道 + 
   &= \boxed{-75.015 \text{ Ha}}
 \end{align}
 
+\section*{分块累积量重构}
+
+\subsection*{标准重构的局限}
+
+标准公式 $E_{\text{total}} = E_{\text{MF}} + \sum_f \Delta E_{\text{corr},f}$ 把能量当作一个整体处理，假设关联能可按碎片简单相加。但跨碎片关联（色散、电荷转移）被丢失。
+
+\subsection*{累积量分解的基本思想}
+
+把总能量按\textbf{连接阶数}分解为累积量：
+$$E = E^{(1)} + E^{(2)} + E^{(3)} + \cdots$$
+
+\begin{itemize}
+  \item $E^{(1)}$：1-body 累积量 $\approx$ HF 贡献（单电子 + 平均场排斥）
+  \item $E^{(2)}$：2-body 累积量 $\approx$ 电子对关联（关联能的主要部分）
+  \item $E^{(3)}$ 及更高：三体及以上关联，通常较小可忽略
+\end{itemize}
+
+对\textbf{每一阶分别重构}：
+$$E_{\text{total}} = E_{\text{MF}} + \sum_f \Big[\big(E^{(2)}_f - E^{(2)}_{\text{MF},f}\big) + \big(E^{(3)}_f - E^{(3)}_{\text{MF},f}\big) + \cdots\Big]$$
+
+\subsection*{何时明显更精确}
+
+\begin{itemize}
+  \item \textbf{跨碎片 2-body 关联显著时}：色散力、$\pi$ 共轭体系。标准重构丢失跨碎片关联，但 2-body 累积量可通过浴轨道重叠部分捕获。
+  \item \textbf{强关联体系}：N$_2$ 拉伸到 2.0 \AA{} 时，静态关联占主导，2-body 累积量的非局域贡献变大。
+  \item \textbf{大基组}：虚拟轨道多，跨碎片虚拟-虚拟关联更丰富，累积量分解能更好分离局域和非局域贡献。
+\end{itemize}
+
+\textbf{代价}：需要计算每个碎片的 2-body 累积量（2-RDM 的连接部分），计算量比标准重构（只需能量）大得多。
+
 \end{document}

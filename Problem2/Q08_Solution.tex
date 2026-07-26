@@ -13,12 +13,8 @@
 \begin{document}
 \maketitle
 
-分子：(c) H$_2$O，DMET 按原子分片。
 
-
-\section{(a) Schmidt 秩上界与浴数上界}
-
-\subsection{一般量子态的 Schmidt 秩上界}
+\section{(a)}
 
 设量子态 $|\Psi\rangle \in \mathcal{H}_{\text{imp}} \otimes \mathcal{H}_{\text{env}}$，在基 $\{|a_i\rangle\}$ 和 $\{|b_j\rangle\}$ 下展开：
 \begin{equation}
@@ -39,8 +35,6 @@
 \end{equation}
 
 $C$ 最多有 $\min(d_{\text{imp}}, d_{\text{env}})$ 个非零奇异值。
-
-\subsection{HF 态的更紧上界：$\gamma^2 = \gamma$ 的作用}
 
 HF 态的 1-RDM $\gamma$ 是投影算符（幂等）：$\gamma^2 = \gamma$。
 
@@ -80,9 +74,7 @@ $\gamma_{\text{EI}}$ 的秩 = 碎片-环境独立耦合方向数 = 浴轨道数 
 
 对于闭壳层 HF，通常取等号：$n_{\text{bath}} = n_{\text{imp}}$。
 
-\section{(b) DMET 最小浴精确复现 HF 密度矩阵}
-
-\subsection{第一步：构造浴轨道}
+\section{(b)}
 
 对角化 $\gamma_{\text{II}}$ 得碎片自然轨道 $\{v_k\}$ 和占据数 $\{\lambda_k\}$：
 \begin{equation}
@@ -96,8 +88,6 @@ $\gamma_{\text{EI}}$ 的秩 = 碎片-环境独立耦合方向数 = 浴轨道数 
 
 归一化得浴轨道 $b_k = w_k / |w_k|$。
 
-\subsection{第二步：用 $\gamma^2 = \gamma$ 计算耦合强度}
-
 \begin{align}
   |w_k|^2 &= \tilde{v}_k^\dagger\, \gamma\, (I - P_{\text{imp}})\, \gamma\, \tilde{v}_k \\
   &= \tilde{v}_k^\dagger\, \gamma^2\, \tilde{v}_k - \tilde{v}_k^\dagger\, \gamma\, P_{\text{imp}}\, \gamma\, \tilde{v}_k \\
@@ -109,8 +99,6 @@ $\gamma_{\text{EI}}$ 的秩 = 碎片-环境独立耦合方向数 = 浴轨道数 
   \item 耦合强度：$c_k = |w_k| = \sqrt{\lambda_k(1-\lambda_k)}$（第二步用 $\gamma^2 = \gamma$ 算出）
   \item 浴占据数：$\mu_k = 1 - \lambda_k$（2$\times$2 块幂等条件给出）
 \end{itemize}
-
-\subsection{第三步：组装嵌入空间密度矩阵}
 
 在基 $\{v_1, \ldots, v_{n_{\text{imp}}}, b_1, \ldots, b_{n_{\text{imp}}}\}$ 下，全分子 $\gamma$ 限制到嵌入空间的形式是 $n_{\text{imp}}$ 个\textbf{独立的 $2 \times 2$ 块}：
 \begin{equation}
@@ -127,8 +115,6 @@ $\gamma_{\text{EI}}$ 的秩 = 碎片-环境独立耦合方向数 = 浴轨道数 
 
 最后一步用了：$\gamma_{\text{II}}^{\text{full}}$ 在自然轨道基下也是 $\text{diag}(\lambda_1, \ldots, \lambda_{n_{\text{imp}}})$（第一步对角化的定义）。
 
-\subsection{第四步：证明 $\gamma|_{\text{embed}}$ 是嵌入空间的 HF 解}
-
 \begin{enumerate}
   \item \textbf{$\gamma\big|_{\text{embed}}$ 幂等}：每个 $2 \times 2$ 块满足 $\begin{pmatrix} \lambda & c \\ c & 1{-}\lambda \end{pmatrix}^2 = \begin{pmatrix} \lambda & c \\ c & 1{-}\lambda \end{pmatrix}$（直接验证：$\lambda^2 + c^2 = \lambda^2 + \lambda(1{-}\lambda) = \lambda$ ✓），故整体幂等 → 对应 Slater 行列式。
 
@@ -142,7 +128,7 @@ $\gamma_{\text{EI}}$ 的秩 = 碎片-环境独立耦合方向数 = 浴轨道数 
   \boxed{\;\gamma_{\text{II}}^{\text{embed}} = \text{diag}(\lambda_1, \ldots, \lambda_{n_{\text{imp}}}) = \gamma_{\text{II}}^{\text{full}}\;}
 \end{equation}
 
-\section{(c) 求解器升级后最小浴不再精确}
+\section{(c) }
 
 \subsection{为什么 $\gamma^{\text{corr}} \neq (\gamma^{\text{corr}})^2$}
 
@@ -186,5 +172,34 @@ MP2 浴自然轨道（BNO）从 $\delta\gamma^{\text{MP2}}$ 的环境部分提�
   \item MP2 浴额外捕获 $\delta\gamma^{\text{MP2}}$ 的碎片-环境耦合（动力学部分）
   \item 截断阈值 $\eta$ 控制 BNO 数量：$\eta$ 越小，浴越大，精度越高但代价越大
 \end{itemize}
+
+\section*{DMET 化学势 $\mu$ 与 one-shot vs 自洽}
+
+\subsection*{$\mu$ 的确定}
+
+$\mu$ 是拉格朗日乘子，约束碎片电子数：
+$$N_{\text{imp}}(\mu) = \text{Tr}_{\text{imp}}\big[\gamma^{\text{corr}}(\mu)\big] = N_{\text{imp}}^{\text{target}}$$
+
+构造嵌入哈密顿量 $H_{\text{imp}}(\mu) = H_{\text{embed}} + \mu\,\hat{N}_{\text{imp}}$。$\hat{N}_{\text{imp}}$ 在计算基下是对角矩阵，故 $\mu$ 只改变 CI 矩阵对角元。$N_{\text{imp}}(\mu)$ 随 $\mu$ 单调递减，用牛顿法搜索。
+
+\subsection*{One-shot DMET}
+
+用 $\gamma^{\text{HF}}$ 构造浴（一次性），每碎片求解一次，$\mu = 0$ 不迭代。极快但碎片电子数可能不匹配，精度受限。
+
+\subsection*{自洽 DMET}
+
+对每碎片迭代：构造 $H_{\text{imp}}(\mu)$ $\to$ 求解 $\to$ 检查 $N_{\text{imp}}$ $\to$ 更新 $\mu$，3--5 轮收敛。精度更高但慢 3--5 倍。可选浴自洽（用 $\gamma^{\text{corr}}$ 重做浴），计算量翻数倍。
+
+\begin{center}
+\begin{tabular}{lcc}
+  \toprule
+  & One-shot & 自洽 \\
+  \midrule
+  求解器调用 & $F$（每碎片 1 次） & $\sim 4F$ \\
+  $\mu$ 匹配 & 不保证 & 保证 \\
+  精度 & 较低 & 较高 \\
+  \bottomrule
+\end{tabular}
+\end{center}
 
 \end{document}

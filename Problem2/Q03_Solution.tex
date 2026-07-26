@@ -200,4 +200,28 @@ $$\big(1 - \epsilon_{\text{bit}}(p_{\text{crit}})\big)^{K \cdot p_{\text{crit}}}
 对 H$_2$（$K=4$, $S=1000$），数值求解得 $p_{\text{crit}} \approx 0.45$，与实验一致。
 
 
+\section*{贝叶斯推断表述}
+
+\subsection*{MAP 组态}
+
+将组态恢复表述为贝叶斯推断：
+
+\begin{itemize}
+  \item \textbf{先验}：$P(\mathbf{d}) = \prod_i \bar{n}_i^{d_i}(1-\bar{n}_i)^{1-d_i}$，$\bar{n}_i$ 编码先验占据信息
+  \item \textbf{似然}：$P(\mathbf{b}|\mathbf{d}) = \prod_i p^{[b_i \neq d_i]}(1-p)^{[b_i = d_i]}$，观测模型
+  \item \textbf{后验}：$P(\mathbf{d}|\mathbf{b}) \propto P(\mathbf{b}|\mathbf{d})\,P(\mathbf{d})$
+  \item \textbf{MAP}：$\mathbf{d}^* = \arg\max_{\mathbf{d}} P(\mathbf{d}|\mathbf{b})$，约束 $\sum d_i = N_e$
+\end{itemize}
+
+\subsection*{与 (b) 的关系}
+
+(b) 证明的贪心翻转\textbf{就是} MAP 估计在低噪声极限下的最优近似：
+
+\begin{itemize}
+  \item MAP 的精确解需要搜索所有满足约束的 $\mathbf{d}$，组合爆炸
+  \item 贪心策略在 $p \to 0$、独立占据假设下退化为 MAP
+  \item 关键桥梁：目标函数\textbf{可分离}（独立占据假设）$\to$ top-$k$ 选择的贪心 = 全局最优
+  \item 两者关系：MAP 是原理（``什么是最优''），贪心翻转是实现（``怎么高效近似''）
+\end{itemize}
+
 \end{document}
