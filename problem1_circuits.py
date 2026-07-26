@@ -98,17 +98,22 @@ save(qc, "q6_c_ghz_to_single",
      "(c) GHZ$\\to$ single qubit: measure $q_1,q_2$ in $X$ basis; feed-forward $Z^s$ on $q_0$")
 
 # ============================================================
-# (d) 扇出门 F4：最优幺正实现（7 个最近邻 CNOT，深度 4）
+# (d) 扇出门 F4：规模最优幺正实现（7 个最近邻 CNOT，深度 7）
+#     阶梯（有限差分）结构：下行 telescope 成差分 -> 在 q0 注入 x0 -> 上行累积
+#     CNOT(3->4),(2->3),(1->2),(0->1),(1->2),(2->3),(3->4)
+#     规模 7 由门-BFS 证明最小；分层 BFS 证明最小深度=6（需 10 个 CNOT），深度 4 不可达。
 # ============================================================
 q = QuantumRegister(5, "q")
 qc = QuantumCircuit(q)
-# BFS 最小规模分解；按不相交边并行，屏障分隔 4 层
-qc.cx(q[3], q[4]); qc.cx(q[1], q[2]);   qc.barrier()
-qc.cx(q[2], q[3]); qc.cx(q[0], q[1]);   qc.barrier()
-qc.cx(q[1], q[2]); qc.cx(q[3], q[4]);   qc.barrier()
+qc.cx(q[3], q[4])
 qc.cx(q[2], q[3])
+qc.cx(q[1], q[2])
+qc.cx(q[0], q[1])
+qc.cx(q[1], q[2])
+qc.cx(q[2], q[3])
+qc.cx(q[3], q[4])
 save(qc, "q6_d_fanout_f4",
-     "(d) Optimal unitary fanout $F_4$: 7 nearest-neighbor CNOTs, depth 4")
+     "(d) Size-optimal unitary fanout $F_4$: 7 nearest-neighbor CNOTs (depth 7)")
 
 # ============================================================
 # (e1) SWAP 检验（高层：受控交换门）

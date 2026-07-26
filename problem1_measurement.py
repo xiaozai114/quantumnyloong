@@ -265,6 +265,38 @@ for n in [2, 3, 4]:
 print("  (c) 通过" if ok_c else "  (c) 失败")
 
 # ============================================================
+# (d) F4 扇出（最近邻 CNOT）：验证规模最优的阶梯实现
+# ============================================================
+print("\n(d) F4 扇出：阶梯实现 7 个最近邻 CNOT（深度 7）")
+
+
+def cnot_seq_unitary(seq, n):
+    """seq = [(c, t), ...]；返回 n 比特上依次（按列表顺序）施加这些 CNOT 的整体酉矩阵。"""
+    U = np.eye(2 ** n, dtype=complex)
+    for (c, t) in seq:
+        U = CNOT(c, t, n) @ U
+    return U
+
+
+# 阶梯（规模最优，正确）：下行 telescope -> 在 q0 注入 x0 -> 上行累积
+staircase = [(3, 4), (2, 3), (1, 2), (0, 1), (1, 2), (2, 3), (3, 4)]
+# 原序列（错误，留作对照：它不实现 F4）
+old_wrong = [(3, 4), (1, 2), (2, 3), (0, 1), (1, 2), (3, 4), (2, 3)]
+
+ND = 5
+MASK = 0b11110                                        # 比特 1,2,3,4
+ok_d = True
+for name, seq in [("阶梯(正确)", staircase), ("原序列(错误, 对照)", old_wrong)]:
+    U = cnot_seq_unitary(seq, ND)
+    # |x> 映到的计算基 |y>；F4 要求 q0=x0 不变，q_i<-x_i xor x0（i>=1）
+    good = all(int(np.argmax(np.abs(U[:, x]))) == (x ^ ((x & 1) * MASK))
+               for x in range(2 ** ND))
+    print(f"  {name}：实现 F4？{'是' if good else '否'}")
+    if "正确" in name:
+        ok_d &= good                                  # 正确序列必须实现 F4
+print("  (d) 通过" if ok_d else "  (d) 失败")
+
+# ============================================================
 # (e) 计算 |<psi|phi>| 的 SWAP 检验
 # ============================================================
 print("\n(e) SWAP 检验： P(c=0) = (1 + |<ψ|φ>|²) / 2")
@@ -299,5 +331,5 @@ print("  (e) 通过" if ok_e and abs(p0_orth - 0.5) < 1e-9 and abs(p0_same - 1) 
       else "  (e) 失败")
 
 print("\n" + "=" * 64)
-print("总计：", "全部通过" if (ok_a and ok_b and ok_c and ok_e) else "存在失败")
+print("总计：", "全部通过" if (ok_a and ok_b and ok_c and ok_d and ok_e) else "存在失败")
 print("=" * 64)

@@ -301,6 +301,8 @@ depth, or both simultaneously.
 \caption{（方法二）Bell 基测量：$\mathrm{CNOT}(q_1\to q_2)$ 后 $H(q_1)$，再测两个比特；结果 $00$ 即投影到 $\ket{\Phi^+}$。}
 \end{figure}
 
+\textbf{辅助比特优化。} 方法一用了两个辅助比特分别测 $Z_1Z_2$、$X_1X_2$。由于二者对易，可\textbf{共用同一个辅助比特}：测完 $Z_1Z_2$ 读出后把辅助比特 reset 为 $\ket{0}$，再用它测 $X_1X_2$（中途测量与复位，mid-circuit measurement \& reset）。这把辅助比特数从 $2$ 降到 $1$，总 qubit 数 $4\to 3$。进一步，由于 $(+1,+1)$ 共同本征空间是一维的（即 $\ket{\Phi^+}$），方法二的 Bell 基测量配合 post-selection 与条件反计算（测得 $00$ 后再施 $H(q_1)\,\mathrm{CNOT}(q_1\to q_2)$）即可在\textbf{仅 $2$ 个数据比特、$0$ 辅助}的情况下把数据寄存器还原为 $\ket{\Phi^+}$，代价是成功率仅为 $|\braket{\Phi^+|\psi}|^2$。
+
 \hfill $\square$
 
 \medskip
@@ -365,28 +367,39 @@ depth, or both simultaneously.
 \hfill $\square$
 
 \medskip
-\noindent\textbf{Solution (d) (Optional).} 在仅允许最近邻 $\mathrm{CNOT}(q_i,q_{i+1})$ 的路径上把 $q_0$ 扇出到 $q_1,\dots,q_4$。$F_4$ 作为可逆线性映射 $x_i\mapsto x_i\oplus x_0$（$i\ge1$，$q_0$ 不变），下面给出一个\textbf{规模最小、深度最优}的幺正实现。
+\noindent\textbf{Solution (d) (Optional).} 在仅允许最近邻 $\mathrm{CNOT}(q_i,q_{i+1})$ 的路径上把 $q_0$ 扇出到 $q_1,\dots,q_4$。$F_4$ 作为可逆线性映射 $x_i\mapsto x_i\oplus x_0$（$i\ge1$，$q_0$ 不变）。由于是 $5$ 比特门，数据寄存器本身就是 $5$ 比特的下界；下面的幺正实现\textbf{不使用辅助比特}，并在规模上达到最优。
 
-\textbf{最优幺正实现。} 经穷举（在路径图的 CNOT 上做 BFS）得到的最小分解为 $7$ 个最近邻 CNOT，按不相交边并行后深度仅为 $4$：
+\textbf{规模最优幺正实现（阶梯/有限差分）。} 沿链下行做差分（telescope）、在 $q_0$ 注入 $x_0$、再上行重新累积，共用 $7$ 个最近邻 CNOT（深度 $7$）：
 \begin{equation*}
-\begin{array}{l}
-L_0:\ \mathrm{CNOT}(3{\to}4),\ \mathrm{CNOT}(1{\to}2)\\
-L_1:\ \mathrm{CNOT}(2{\to}3),\ \mathrm{CNOT}(0{\to}1)\\
-L_2:\ \mathrm{CNOT}(1{\to}2),\ \mathrm{CNOT}(3{\to}4)\\
-L_3:\ \mathrm{CNOT}(2{\to}3)
-\end{array}
+\mathrm{CNOT}(3{\to}4),\ \mathrm{CNOT}(2{\to}3),\ \mathrm{CNOT}(1{\to}2),\ \mathrm{CNOT}(0{\to}1),\ \mathrm{CNOT}(1{\to}2),\ \mathrm{CNOT}(2{\to}3),\ \mathrm{CNOT}(3{\to}4).
 \end{equation*}
-该序列已对全部 $2^5=32$ 个计算基输入数值验证，输出恰为 $q_i\mapsto x_i\oplus x_0$（$i=1,\dots,4$）、$q_0$ 保持 $x_0$。
+\textbf{正确性。} 下行后各比特取差分形式 $q_i\gets x_i\oplus x_{i-1}$（$i=1,\dots,4$，最右端 $q_4\gets x_4\oplus x_3$），中央的 $\mathrm{CNOT}(0{\to}1)$ 把 $q_1$ 变为 $x_1\oplus x_0$；随后上行 $\mathrm{CNOT}(1{\to}2),(2{\to}3),(3{\to}4)$ 把差分逐级累加，得到 $q_i=x_i\oplus x_0$（$i=1,\dots,4$），$q_0=x_0$。该映射已对全部 $2^5=32$ 个计算基输入数值验证（见 \texttt{problem1\_measurement.py} 的 (d) 段）。
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.95\linewidth]{figs/q6_d_fanout_f4}
-\caption{$F_4$ 扇出的最优幺正实现：$7$ 个最近邻 CNOT，分 $4$ 层（屏障分隔）并行，深度 $4$。}
+\caption{$F_4$ 扇出的\textbf{规模最优}幺正实现：$7$ 个最近邻 CNOT（阶梯结构），深度 $7$。}
 \end{figure}
 
-\textbf{深度下界与最优性。} $x_0$ 的信息须从 $q_0$ 沿路径传到 $q_4$，路径距离为 $4$，而每层最近邻门至多把信息推进一跳，故\textbf{深度 $\ge 4$}。上式达到 $4$，因此在路径拓扑上深度最优；规模 $7$ 个 CNOT 亦为穷举最小。
+\textbf{最优性与深度下界（穷举证明）。} 把每个数据比特表示为原始输入在 $\mathbb F_2$ 上的线性型，对全部“有向匹配层”（一层内可并行的最近邻 CNOT 集合，共 $20$ 种）做分层 BFS：
+\begin{itemize}
+    \item \textbf{最小规模}：以单个 CNOT 为步的 BFS 给出最小 CNOT 数 $=7$，故上式规模最优；
+    \item \textbf{最小深度}：分层 BFS 表明深度 $\le 5$ 时至多到达 $36464$ 个态且不含 $F_4$ 目标态，深度 $=6$ 才首次可达。\textbf{故最小深度为 $6$，深度 $4$ 不可达。}
+\end{itemize}
+光锥论证只给出 $\ge 4$，但扇出还要求中间比特被“洗净”（仅添 $x_0$、不引入前缀异或），需要信号传到末端后再传回，因此实际下界更高。规模与深度不可同时取到各自最小：深度 $6$ 的实现需 $10$ 个 CNOT，例如
+\begin{equation*}
+\begin{array}{l}
+L_0:\ \mathrm{CNOT}(0{\to}1)\\
+L_1:\ \mathrm{CNOT}(1{\to}0),\ \mathrm{CNOT}(3{\to}4)\\
+L_2:\ \mathrm{CNOT}(0{\to}1),\ \mathrm{CNOT}(2{\to}3)\\
+L_3:\ \mathrm{CNOT}(1{\to}2)\\
+L_4:\ \mathrm{CNOT}(0{\to}1),\ \mathrm{CNOT}(2{\to}3)\\
+L_5:\ \mathrm{CNOT}(1{\to}0),\ \mathrm{CNOT}(3{\to}4)
+\end{array}
+\end{equation*}
+故 Pareto 前沿为 $(\text{规模},\text{深度})\in\{(7,7),(10,6)\}$：优化规模取阶梯实现，优化深度取上式。
 
-\textbf{用测量进一步降深度。} 若额外允许\textbf{预先共享纠缠资源}（沿路径排布的 Bell 对或 GHZ 猫态），可用量子传态思路在 $O(1)$ 深度内实现远距离 CNOT：以猫态为媒介对辅助比特做联合（贝尔型）测量并按结果作经典前馈 Pauli 修正，可把扇出深度降到与 $n$ 无关；代价是 $O(n)$ 个辅助比特与预共享纠缠（注意：仅做单比特 $X$ 基测量并不足以完成，需两比特联合测量）。在仅用最近邻 CNOT、无预共享纠缠的设定下，上述深度 $4$ 已为最优。
+\textbf{用测量进一步降深度。} 若额外允许\textbf{预先共享纠缠资源}（沿路径排布的 Bell 对或 GHZ 猫态），可用量子传态思路在 $O(1)$ 深度内实现远距离 CNOT：以猫态为媒介对辅助比特做联合（贝尔型）测量并按结果作经典前馈 Pauli 修正，可把扇出深度降到与 $n$ 无关；代价是 $O(n)$ 个辅助比特与预共享纠缠（注意：仅做单比特 $X$ 基测量并不足以完成，需两比特联合测量）。在仅用最近邻 CNOT、无预共享纠缠的设定下，光锥仍是根本约束：阶梯实现达到\textbf{规模最优}（$7$ 个 CNOT），而\textbf{深度最优为 $6$}（需 $10$ 个 CNOT）。
 
 \hfill $\square$
 
