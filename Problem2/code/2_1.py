@@ -44,47 +44,21 @@ print("=" * 64)
 print("2.1(a)  Build H₂ (R=0.74 Å, STO-3G) Hamiltonian")
 print("=" * 64)
 
+# ── Build Hamiltonian via openfermionpyscf ──
+mol_ham_h2 = generate_molecular_hamiltonian(
+    [("H", (0, 0, 0)), ("H", (0, 0, 0.74))], "sto-3g", 1)
+ham_fermi = get_fermion_operator(mol_ham_h2)
+nspin = mol_ham_h2.n_qubits
+norb = nspin // 2
+
+# ── PySCF reference info (for display only) ──
 mol = gto.M(atom="H 0 0 0; H 0 0 0.74", basis="sto-3g", spin=0, verbose=0)
 mf = scf.RHF(mol).run()
-norb, nspin = mol.nao, 2 * mol.nao  # 2 spatial → 4 spin orbitals
-E_nuc = mol.energy_nuc()
-
-# AO → MO integral transformation
-h1e_mo = mf.mo_coeff.T @ (mol.intor('int1e_kin') + mol.intor('int1e_nuc')) @ mf.mo_coeff
-eri_mo = np.einsum('pqrs,pi,qj,rk,sl->ijkl', mol.intor('int2e_sph'),
-                   *[mf.mo_coeff] * 4, optimize=True)
-
-# Spin-orbital expansion
-h1e = np.zeros((nspin, nspin))
-eri = np.zeros((nspin, nspin, nspin, nspin))
-for p in range(norb):
-    for q in range(norb):
-        h1e[2 * p, 2 * q] = h1e[2 * p + 1, 2 * q + 1] = h1e_mo[p, q]
-for p, q, r, s in np.ndindex(2, 2, 2, 2):
-    v = eri_mo[p, q, r, s]
-    if abs(v) < 1e-14:
-        continue
-    eri[2 * p, 2 * q, 2 * r, 2 * s] = v               # αααα
-    eri[2 * p, 2 * q, 2 * r + 1, 2 * s + 1] = v       # ααββ
-    eri[2 * p + 1, 2 * q + 1, 2 * r, 2 * s] = v       # ββαα
-    eri[2 * p + 1, 2 * q + 1, 2 * r + 1, 2 * s + 1] = v  # ββββ
-
-# FermionOperator
-ham_fermi = FermionOperator()
-for p in range(nspin):
-    for q in range(nspin):
-        if abs(h1e[p, q]) > 1e-14:
-            ham_fermi += FermionOperator(f"{p}^ {q}", h1e[p, q])
-for p, q, r, s in np.ndindex(4, 4, 4, 4):
-    val = 0.5 * eri[p, q, r, s]
-    if abs(val) > 1e-14:
-        ham_fermi += FermionOperator(f"{p}^ {r}^ {s} {q}", val)
-ham_fermi += FermionOperator((), E_nuc)
 
 print(f"  Spatial orbs = {norb},  Spin orbs = {nspin}")
 print(f"  E_RHF  = {mf.e_tot:.10f} Ha")
 print(f"  ε₀(σ)  = {mf.mo_energy[0]:.8f},  ε₁(σ*) = {mf.mo_energy[1]:.8f}")
-print(f"  FermionOperator: {len(ham_fermi.terms)} terms  ✓")
+print(f"  FermionOperator (via generate_molecular_hamiltonian): {len(ham_fermi.terms)} terms  ✓")
 
 # ===========================================================================
 # 2.1(b)  JW mapping — example verification
@@ -96,9 +70,10 @@ print("  Full manual derivation of h₀₁ a₀†a₁ + h.c. → (h₀₁/4)(X�
 print("  is in Problem2/2.1b-JW-derivation.tex.")
 
 # Code check with a non-zero term (regular MO basis has h₀₀ ≠ 0)
-term = FermionOperator('0^ 0', h1e[0, 0])
+h00 = mol_ham_h2.one_body_tensor[0, 0]
+term = FermionOperator('0^ 0', h00)
 res = jordan_wigner(term)
-expected = QubitOperator((), h1e[0, 0] / 2) + QubitOperator('Z0', -h1e[0, 0] / 2)
+expected = QubitOperator((), h00 / 2) + QubitOperator('Z0', -h00 / 2)
 print(f"  Code:  h₀₀ a₀†a₀ → {res}")
 print(f"  Check: matches (h₀₀/2)(I − Z₀) = {res == expected}  ✓")
 
@@ -115,6 +90,11 @@ ham_bk = bravyi_kitaev(ham_fermi)
 
 for label, op in [("JW", ham_jw), ("Parity", ham_parity), ("BK", ham_bk)]:
     _print_stats(label, op)
+
+# ── Store H₂ stats for later comparison in (e) ──
+h2_stats = {
+    "JW": _stats(ham_jw), "Parity": _stats(ham_parity), "BK": _stats(ham_bk),
+}
 
 # ── Show JW terms explicitly for problem (c) requirement ──
 print("\n  JW Pauli terms:")
@@ -164,51 +144,42 @@ print(f"\n{'=' * 64}")
 print("2.1(e)  H₂ vs N₂ — JW / Parity / BK comparison")
 print("=" * 64)
 
+# ── N₂: use generate_molecular_hamiltonian ──
+mol_ham_n2 = generate_molecular_hamiltonian(
+    [("N", (0, 0, 0)), ("N", (0, 0, 1.10))], "sto-3g", 1)
+ferm_n2 = get_fermion_operator(mol_ham_n2)
+nq_n2 = mol_ham_n2.n_qubits
 
-def analyze_molecule(geometry, basis, mult, name):
-    """Generate molecular Hamiltonian & compute Pauli statistics."""
-    mol_ham = generate_molecular_hamiltonian(geometry, basis, mult)
-    ferm = get_fermion_operator(mol_ham)
-    nq = mol_ham.n_qubits
+n2_stats = {}
+for label, op in [
+    ("JW", jordan_wigner(ferm_n2)),
+    ("Parity", binary_code_transform(ferm_n2, parity_code(nq_n2))),
+    ("BK", bravyi_kitaev(ferm_n2)),
+]:
+    n2_stats[label] = _stats(op)
 
-    results = {"name": name, "n_spin": nq, "fermi_terms": len(ferm.terms)}
-    for label, op in [
-        ("JW", jordan_wigner(ferm)),
-        ("Parity", binary_code_transform(ferm, parity_code(nq))),
-        ("BK", bravyi_kitaev(ferm)),
-    ]:
-        results[label] = _stats(op)
-    return results
-
-
-h2 = analyze_molecule([("H", (0, 0, 0)), ("H", (0, 0, 0.74))],
-                      "sto-3g", 1, "H₂")
-n2 = analyze_molecule([("N", (0, 0, 0)), ("N", (0, 0, 1.10))],
-                      "sto-3g", 1, "N₂")
-
-for r in [h2, n2]:
-    print(f"\n  ── {r['name']} ──")
-    print(f"  Spin orbitals: {r['n_spin']}   Fermi terms: {r['fermi_terms']}")
+# ── H₂ stats from (c) — no recalculation needed ──
+for name, n_spin, fermi_terms, stats in [
+    ("H₂", nspin, len(ham_fermi.terms), h2_stats),
+    ("N₂", nq_n2, len(ferm_n2.terms), n2_stats),
+]:
+    print(f"\n  ── {name} ──")
+    print(f"  Spin orbitals: {n_spin}   Fermi terms: {fermi_terms}")
     print(f"  {'Mapping':>8}  {'Pauli terms':>12}  {'Max weight':>10}")
     print(f"  {'─' * 36}")
     for label in ["JW", "Parity", "BK"]:
-        n, w, _ = r[label]
+        n, w, _ = stats[label]
         print(f"  {label:>8}  {n:>12}  {w:>10}")
 
     # Weight distribution
-    all_w = sorted(set().union(*[r[k][2].keys() for k in ["JW", "Parity", "BK"]]))
+    all_w = sorted(set().union(*[stats[k][2].keys() for k in ["JW", "Parity", "BK"]]))
     print(f"\n  {'w':>4}  {'JW':>8}  {'Parity':>8}  {'BK':>8}")
     print(f"  {'─' * 32}")
     for w in all_w:
-        jw_c = r["JW"][2].get(w, 0)
-        pa_c = r["Parity"][2].get(w, 0)
-        bk_c = r["BK"][2].get(w, 0)
+        jw_c = stats["JW"][2].get(w, 0)
+        pa_c = stats["Parity"][2].get(w, 0)
+        bk_c = stats["BK"][2].get(w, 0)
         print(f"  {w:>4}  {jw_c:>8}  {pa_c:>8}  {bk_c:>8}")
-
-# Verify H₂ consistency with manual construction
-assert h2["fermi_terms"] == len(ham_fermi.terms)
-assert h2["JW"][0] == _stats(ham_jw)[0]
-print(f"\n  H₂ openfermionpyscf ↔ manual construction: consistent ✓")
 
 # ===========================================================================
 # Advanced Challenge
@@ -217,14 +188,13 @@ print(f"\n{'=' * 64}")
 print("Advanced Challenge: BK max weight for N₂ & circuit depth reduction")
 print("=" * 64)
 
-jw_n, jw_w, _ = n2["JW"]
-bk_n, bk_w, _ = n2["BK"]
-nq = n2["n_spin"]
+jw_n, jw_w, _ = n2_stats["JW"]
+bk_n, bk_w, _ = n2_stats["BK"]
 
-print(f"\n  N₂/STO-3G: {nq} spin orbitals ({nq // 2} spatial)")
-print(f"  JW max Pauli weight = {jw_w}   O(n) = n = {nq}")
+print(f"\n  N₂/STO-3G: {nq_n2} spin orbitals ({nq_n2 // 2} spatial)")
+print(f"  JW max Pauli weight = {jw_w}   O(n) = n = {nq_n2}")
 print(f"  BK max Pauli weight = {bk_w}   O(log n) scaling")
-print(f"    (single Majorana: ~2·log₂({nq})+1 ≈ {2*int(np.ceil(np.log2(nq)))+1};")
+print(f"    (single Majorana: ~2·log₂({nq_n2})+1 ≈ {2*int(np.ceil(np.log2(nq_n2)))+1};")
 print(f"     multi-body product terms in H push it to {bk_w})")
 
 depth_ratio = jw_w / bk_w
