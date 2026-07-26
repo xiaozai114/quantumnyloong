@@ -15,10 +15,9 @@ _txt = open(TEXTFILE, "w", encoding="utf-8")
 
 
 def save(qc, name, title):
-    """绘制线路并以 PNG 保存；title 为图的英文/数学标题。
-    同时把 ASCII/文本版线路写入 q6_circuits.txt，便于核对结构。"""
+    """绘制线路并以 PNG 保存（不带标题，标题由 LaTeX 图题给出）；
+    同时把文本版线路写入 q6_circuits.txt，便于核对结构。"""
     fig = qc.draw(output="mpl", initial_state=True)
-    fig.suptitle(title, fontsize=12)
     path = os.path.join(OUT, name + ".png")
     fig.savefig(path, dpi=DPI, bbox_inches="tight")
     print(f"  已保存：{path}")
@@ -99,27 +98,22 @@ save(qc, "q6_c_ghz_to_single",
      "(c) GHZ$\\to$ single qubit: measure $q_1,q_2$ in $X$ basis; feed-forward $Z^s$ on $q_0$")
 
 # ============================================================
-# (d) 扇出门 F4：GHZ 猫态辅助比特 + 测量（常数深度）
+# (d) 扇出门 F4：规模最优幺正实现（7 个最近邻 CNOT，深度 7）
+#     阶梯（有限差分）结构：下行 telescope 成差分 -> 在 q0 注入 x0 -> 上行累积
+#     CNOT(3->4),(2->3),(1->2),(0->1),(1->2),(2->3),(3->4)
+#     规模 7 由门-BFS 证明最小；分层 BFS 证明最小深度=6（需 10 个 CNOT），深度 4 不可达。
 # ============================================================
 q = QuantumRegister(5, "q")
-a = QuantumRegister(5, "a")
-qc = QuantumCircuit(q, a, ClassicalRegister(5, "c"))
-# 在 a0..a4 上制备 GHZ
-qc.h(a[0]); qc.cx(a[0], a[1]); qc.cx(a[1], a[2]); qc.cx(a[2], a[3]); qc.cx(a[3], a[4])
-# 把控制 q0 注入猫态
-qc.cx(q[0], a[0])
-# 把 ai 耦合到目标 qi (i=1..4)
-for i in range(1, 5):
-    qc.cx(a[i], q[i])
-# 在 X 基下测量所有辅助比特
-for i in range(5):
-    qc.h(a[i])
-qc.measure(a, [0, 1, 2, 3, 4])
-# 对目标 qi 作相位修正 Z^{m_i⊕m0}（受经典控制）
-for i in range(1, 5):
-    qc.z(q[i])
+qc = QuantumCircuit(q)
+qc.cx(q[3], q[4])
+qc.cx(q[2], q[3])
+qc.cx(q[1], q[2])
+qc.cx(q[0], q[1])
+qc.cx(q[1], q[2])
+qc.cx(q[2], q[3])
+qc.cx(q[3], q[4])
 save(qc, "q6_d_fanout_f4",
-     "(d) Fanout $F_4$ via GHZ ancillas + measurement (constant depth)")
+     "(d) Size-optimal unitary fanout $F_4$: 7 nearest-neighbor CNOTs (depth 7)")
 
 # ============================================================
 # (e1) SWAP 检验（高层：受控交换门）
