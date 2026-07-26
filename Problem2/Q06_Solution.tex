@@ -1,0 +1,137 @@
+% !TEX program = xelatex
+\documentclass[11pt,a4paper]{article}
+\usepackage[UTF8]{ctex}
+\usepackage{amsmath,amssymb}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{graphicx}
+
+\title{Q06 解答：}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+分子：(b) LiH（$N = 8$）。VQE：$p = 4$，$N_{\text{iter}} = 100$；SQD：$S = 1000$，$N_{\text{iter}} = 5$；$\epsilon = 10^{-3}$ Ha。
+
+%% =====================
+\section{(a) 量子资源对比}
+%% =====================
+
+\subsection{VQE 的总线路执行次数}
+
+VQE 每步迭代需要：
+\begin{itemize}
+  \item 计算梯度：参数移位法则，$p$ 个参数每个需 $2$ 次求值 $\to$ $2p$ 次线路执行
+  \item 每次能量求值：测量 $O(N^4)$ 个 Pauli 项
+  \item 每个 Pauli 项需 $O(1/\epsilon^2)$ 次采样（达到精度 $\epsilon$）
+\end{itemize}
+
+单次迭代的总测量次数：
+$$n_{\text{VQE}}^{(\text{1 iter})} = 2p \times N^4 \times \frac{1}{\epsilon^2}$$
+
+代入数值（$p = 4$，$N = 8$，$\epsilon = 10^{-3}$）：
+$$n_{\text{VQE}}^{(\text{1 iter})} = 2 \times 4 \times 8^4 \times 10^6 = 8 \times 4096 \times 10^6 = 3.3 \times 10^{10}$$
+
+总迭代 $N_{\text{iter}} = 100$ 次：
+$$\boxed{n_{\text{VQE}} = 100 \times 3.3 \times 10^{10} \approx 3.3 \times 10^{12}}$$
+
+\subsection{SQD 的总线路执行次数}
+
+SQD 每次迭代：
+\begin{itemize}
+  \item 从固定线路采样 $S$ 个比特串（不需要测 Pauli 期望值）
+  \item 经典对角化（不占量子资源）
+\end{itemize}
+
+单次迭代：$S$ 次线路执行。总迭代 $N_{\text{iter}} = 5$ 次：
+$$\boxed{n_{\text{SQD}} = 5 \times 1000 = 5000}$$
+
+\subsection{数量级对比}
+
+\begin{center}
+\begin{tabular}{lcc}
+  \toprule
+  & VQE & SQD \\
+  \midrule
+  总线路执行次数 & $\sim 10^{12}$ & $\sim 10^3$ \\
+  量子资源比 & \multicolumn{2}{c}{$n_{\text{VQE}} / n_{\text{SQD}} \approx 10^9$} \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+%% =====================
+\section{(b) 能量精度：$E_{\text{SQD}} \leq E_{\text{VQE}}$}
+%% =====================
+
+\subsection{设定}
+
+量子线路制备态 $|\Psi\rangle = \sum_x c_x |x\rangle$。定义采样子空间：
+$$\mathcal{S} = \text{span}\{|x\rangle : c_x \neq 0\}$$
+
+因为 $|\Psi\rangle = \sum_x c_x |x\rangle$，所有 $c_x \neq 0$ 的 $|x\rangle$ 都在 $\mathcal{S}$ 中，所以 $|\Psi\rangle$ 是 $\mathcal{S}$ 中向量的线性组合，即 $|\Psi\rangle \in \mathcal{S}$。
+
+$E_{\text{SQD}}$ 是 $\hat{H}$ 在 $\mathcal{S}$ 上的最小期望值——对 $\mathcal{S}$ 中\textbf{所有}态取最小。$|\Psi\rangle$ 是 $\mathcal{S}$ 中的\textbf{一个}特定态。最小值 $\leq$ 任意特定值：
+
+$$\boxed{E_{\text{SQD}} = \min_{|\phi\rangle \in \mathcal{S}} \langle\phi|\hat{H}|\phi\rangle \;\leq\; \langle\Psi|\hat{H}|\Psi\rangle = E_{\text{VQE}}}$$
+
+等号成立当且仅当 $|\Psi\rangle$ 已经是 $\hat{H}$ 在 $\mathcal{S}$ 内的基态：
+
+%% =====================
+\section{(c) 全面对比与时代选择}
+%% =====================
+
+\subsection{六维度对比}
+
+\begin{center}
+\begin{tabular}{llll}
+  \toprule
+  维度 & VQE & SQD & 谁优 \\
+  \midrule
+  线路深度 & 浅（$O(p)$，参数少） & 中等（LUCJ 的 CNOT 深度 $O(n)$） & VQE \\
+  映射灵活性 & 任意映射（只测 Pauli 串） & 任意映射（只采样） & 平手 \\
+  ansatz 选择 & 高度灵活（UCCSD、HEA、ADAPT…） & 固定用 LUCJ（振幅来自 CCSD） & VQE \\
+  噪声鲁棒性 & 差（噪声污染梯度 $\to$ 优化卡住） & 强（采样容忍 + 组态恢复纠错） & SQD \\
+  测量开销 & $10^{12}$ & $5000$ & SQD \\
+  变分范围 & 完全变分（可调参数适配分子） & 非变分（线路固定，经典对角化） & VQE \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{总结}：VQE 在``灵活性''维度赢（浅线路、自由 ansatz、变分优化），SQD 在``实用性''维度赢（噪声鲁棒、测量开销低 $10^9$ 倍）。
+
+\subsection{NISQ 时代（$p_{2q} \sim 0.01$）：SQD 更实用}
+
+\begin{enumerate}
+  \item \textbf{测量开销}：VQE 的 $10^{12}$ 次测量在 NISQ 上跑不完。SQD 的 $5000$ 次采样现实可行。
+  \item \textbf{噪声}：VQE 的梯度估计需要精确的期望值测量，噪声让梯度失真 $\to$ 优化陷入局部极小或 barren plateau。SQD 采样后做经典对角化（无噪声），组态恢复还能纠错。
+  \item \textbf{迭代次数}：VQE 需要 $100$ 次迭代，每次重新跑线路。SQD 只需 $5$ 次。
+\end{enumerate}
+
+\textbf{结论}：NISQ 时代量子资源极度稀缺，SQD 的``少跑量子、多做经典''策略完胜。
+
+\subsection{FTQC 时代（$p_{2q} < 10^{-4}$）：QPE 碾压两者}
+
+\begin{center}
+\begin{tabular}{lccc}
+  \toprule
+  方法 & 线路深度 & 重复次数 & T-gate 总数 \\
+  \midrule
+  VQE & $O(p)$（浅） & $10^{12}$ & $O(p \times 10^{12})$（巨大） \\
+  SQD & $O(n)$（中） & $5000$ & $O(n \times 5000)$（中等） \\
+  QPE & $O(1/\epsilon)$（深） & $1$ & $O(N/\epsilon)$（最小） \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\begin{itemize}
+  \item VQE 虽然``浅线路''但重复 $10^{12}$ 次，总资源反而最大
+  \item QPE 虽然线路深但只跑一次，总资源最小，且给出\textbf{精确}能量（非变分上界）
+  \item SQD 居中——比 VQE 好（重复少），比 QPE 差（非精确解）
+\end{itemize}
+
+\textbf{结论}：FTQC 时代排名 QPE $>$ SQD $>$ VQE。EWF + QPE 是 FTQC 时代的终极方案。
+
+\end{document}

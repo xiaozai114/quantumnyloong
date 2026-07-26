@@ -1,0 +1,258 @@
+\documentclass[11pt,a4paper]{ctexart}
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{amsmath,amssymb,bm,braket}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,linkcolor=blue,urlcolor=blue,citecolor=blue}
+
+\newcommand{\Id}{\mathbb{I}}
+\newcommand{\CNOT}{\operatorname{CNOT}}
+\newcommand{\CRY}{\operatorname{CRY}}
+\newcommand{\RZ}{R_{Z}}
+\newcommand{\RZZ}{R_{ZZ}}
+\newcommand{\RX}{R_{X}}
+\newcommand{\RY}{R_{Y}}
+
+\title{LUCJ 量子线路分解与资源估计\\\large Tencent Sparking Program 2026：Problem 2.4}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{问题与约定}
+
+本报告讨论 H$_2$（4 个自旋轨道、4 个量子比特）的一层 Local Unitary Cluster Jastrow（LUCJ）线路。单层 LUCJ 的形式为
+\begin{equation}
+    \ket{\Psi_{\mathrm{LUCJ}}}=Ue^{i\hat J_{\mathrm{local}}}U^\dagger\ket{\mathrm{HF}},
+    \label{eq:lucj}
+\end{equation}
+其中 $U=e^{\hat\kappa}$ 是由 Givens rotation 构成的轨道旋转，$\hat J_{\mathrm{local}}$ 是局域 Jastrow 算符。由于算符对态的作用顺序从右向左，实际电路按
+\begin{equation}
+    \ket{\mathrm{HF}}\ \longrightarrow\ U^\dagger\ \longrightarrow\ e^{i\hat J_{\mathrm{local}}}\ \longrightarrow\ U
+    \label{eq:time-order}
+\end{equation}
+执行。
+
+采用题目约定
+\begin{equation}
+    \RZ(\phi)=e^{-i\phi Z/2},\qquad
+    \RZZ(\phi)=e^{-i\phi Z_iZ_j/2}.
+\end{equation}
+在 Jordan--Wigner（JW）映射下，轨道 $i$ 的占据数算符为
+\begin{equation}
+    \hat n_i=\hat a_i^\dagger\hat a_i=\frac{\Id-Z_i}{2}.
+    \label{eq:number}
+\end{equation}
+对题目指定的位串顺序 $\ket{b_3b_2b_1b_0}$，H$_2$ 的 HF 参考态为 $\ket{0011}$；因此从 $\ket{0000}$ 出发，在 $q_0,q_1$ 上同时施加 $X$ 门即可制备该参考态。
+
+\section{Jastrow 项到 $R_Z$ 与 $R_{ZZ}$ 的映射}
+
+\subsection{单个二体 Jastrow 项}
+
+对于 $i\neq j$，由式\eqref{eq:number}有
+\begin{align}
+\hat n_i\hat n_j
+&=\frac14(\Id-Z_i)(\Id-Z_j) \\
+&=\frac14(\Id-Z_i-Z_j+Z_iZ_j).
+\end{align}
+右侧的所有 Pauli 算符相互对易，因此
+\begin{align}
+e^{iJ_{ij}\hat n_i\hat n_j}
+&=\exp\!\left[\frac{iJ_{ij}}4(\Id-Z_i-Z_j+Z_iZ_j)\right]\\
+&=e^{iJ_{ij}/4}e^{-iJ_{ij}Z_i/4}e^{-iJ_{ij}Z_j/4}e^{+iJ_{ij}Z_iZ_j/4}\\
+&=e^{iJ_{ij}/4}\RZ_i\!\left(\frac{J_{ij}}2\right)
+  \RZ_j\!\left(\frac{J_{ij}}2\right)
+  \RZZ_{ij}\!\left(-\frac{J_{ij}}2\right).
+\label{eq:jastrow-map}
+\end{align}
+第一项 $e^{iJ_{ij}/4}$ 为整体相位，不影响测量概率或能量期望值，以下省略。每个 $R_{ZZ}$ 又可按
+\begin{equation}
+    \RZZ_{ij}(\phi)=\CNOT_{i\to j}\,\RZ_j(\phi)\,\CNOT_{i\to j}
+    \label{eq:rzz}
+\end{equation}
+实现，故每个二体 $R_{ZZ}$ 需要 2 个 CNOT。
+
+\subsection{H$_2$ 的局域 Jastrow 层}
+
+一维链 $0-1-2-3$ 上，局域截断只保留相邻轨道对：
+\begin{equation}
+    \hat J_{\mathrm{local}}
+    =J_{01}\hat n_0\hat n_1+J_{12}\hat n_1\hat n_2+J_{23}\hat n_2\hat n_3.
+\end{equation}
+所有项均为占据数算符的多项式，故两两对易：
+\begin{equation}
+    e^{i\hat J_{\mathrm{local}}}
+    =e^{iJ_{01}\hat n_0\hat n_1}
+     e^{iJ_{12}\hat n_1\hat n_2}
+     e^{iJ_{23}\hat n_2\hat n_3}.
+\end{equation}
+合并同一量子比特上的 $R_Z$ 后，得到
+\begin{align}
+e^{i\hat J_{\mathrm{local}}}\doteq{}&
+\RZ_0\!\left(\frac{J_{01}}2\right)
+\RZ_1\!\left(\frac{J_{01}+J_{12}}2\right)
+\RZ_2\!\left(\frac{J_{12}+J_{23}}2\right)
+\RZ_3\!\left(\frac{J_{23}}2\right)\\
+&\times\RZZ_{01}\!\left(-\frac{J_{01}}2\right)
+\RZZ_{12}\!\left(-\frac{J_{12}}2\right)
+\RZZ_{23}\!\left(-\frac{J_{23}}2\right),
+\label{eq:merged-j}
+\end{align}
+其中 $\doteq$ 表示忽略整体相位。
+
+\section{数守恒 Givens rotation}
+
+\subsection{门的作用}
+
+实数 Givens rotation $G_{ij}(\theta)$ 应仅在单占据子空间旋转：
+\begin{align}
+G(\theta)\ket{01}&=\cos\theta\ket{01}+\sin\theta\ket{10},\\
+G(\theta)\ket{10}&=-\sin\theta\ket{01}+\cos\theta\ket{10},\\
+G(\theta)\ket{00}&=\ket{00},\qquad G(\theta)\ket{11}=\ket{11}.
+\end{align}
+因此它严格保持这两个轨道上的电子数，并具有矩阵
+\begin{equation}
+G(\theta)=
+\begin{pmatrix}
+1&0&0&0\\
+0&\cos\theta&-\sin\theta&0\\
+0&\sin\theta&\cos\theta&0\\
+0&0&0&1
+\end{pmatrix}_{\{\ket{00},\ket{01},\ket{10},\ket{11}\}}.
+\label{eq:givens}
+\end{equation}
+
+\subsection{CRY 的直观实现}
+
+以 $q_1$ 为上方导线、$q_0$ 为下方导线，以下从左到右表示时间顺序：
+\begin{equation}
+\boxed{
+\CNOT_{1\to0}\ \longrightarrow\ \CRY_{0\to1}(2\theta)\ \longrightarrow\ \CNOT_{1\to0}.
+}
+\label{eq:cry-givens}
+\end{equation}
+该线路精确实现式\eqref{eq:givens}。它很适合用来说明 Givens rotation 为何只混合 $\ket{01}$ 与 $\ket{10}$。
+
+应特别注意：若把中间门误写为\emph{无控制}的 $R_{Y,1}(2\theta)$，则线路会额外混合 $\ket{00}$ 与 $\ket{11}$，只保持费米子宇称而不保持粒子数，故不能用作 LUCJ 的轨道旋转。
+
+式\eqref{eq:cry-givens}中的 $\CRY$ 并非单比特门。若将其分解到 $\{R_Y,\CNOT\}$ 基础门集，通常总计需要 4 个 CNOT。因此，它用于解释门的作用，而不用于下文题目规定的 ``2 CNOT + single-qubit gates'' 资源计数。
+
+\subsection{用于资源估计的 2-CNOT 分解}
+
+题目所说的 ``Givens rotation = 2 CNOT + single-qubit gates'' 中，single-qubit gates 为复数。一个 2-CNOT 的实现先构造
+\begin{equation}
+U_{\mathrm{SE}}(\theta)=\exp\!\left[-\frac{i\theta}{2}(X_1X_0+Y_1Y_0)\right],
+\end{equation}
+其只混合 $\ket{01},\ket{10}$，但非对角元带有相位 $-i$。按时间顺序，该门可写为
+\begin{equation}
+\RX_1\!\left(\frac{\pi}{2}\right)
+\ \longrightarrow\ \CNOT_{1\to0}
+\ \longrightarrow\ \left[\RX_1(\theta)\otimes\RY_0(\theta)\right]
+\ \longrightarrow\ \CNOT_{1\to0}
+\ \longrightarrow\ \RX_1\!\left(-\frac{\pi}{2}\right).
+\label{eq:single-excitation}
+\end{equation}
+在 $q_1$ 前后添加局域相位校正
+\begin{equation}
+\RZ_1\!\left(-\frac{\pi}{2}\right)
+\quad\text{和}\quad
+\RZ_1\!\left(\frac{\pi}{2}\right)
+\end{equation}
+即可得到实数形式的 $G(\theta)$。因此一个 Givens rotation 使用 2 个 CNOT、6 个单比特门，共 8 个门；若不同量子比特的单比特门可并行，其门深度为 7。
+
+\section{H$_2$ 的资源估计}
+
+\subsection{CNOT 数}
+
+设 $U$ 的编译含 $g$ 个 Givens rotation。则 $U$ 与 $U^\dagger$ 各需要 $2g$ 个 CNOT；式\eqref{eq:merged-j}有 3 个 $R_{ZZ}$，共需要 6 个 CNOT。因此，单层 LUCJ 的 CNOT 数为
+\begin{equation}
+    N_{\mathrm{CNOT}}=2g+6+2g=4g+6.
+    \label{eq:cnot-count}
+\end{equation}
+
+若把 $U$ 视为一个一般的 4 自旋轨道实正交旋转，则可使用
+\begin{equation}
+    g=\binom{4}{2}=6
+\end{equation}
+个 Givens rotation，故
+\begin{equation}
+    \boxed{N_{\mathrm{CNOT}}=4\times6+6=30.}
+\end{equation}
+
+该 30-CNOT 结果依赖于允许任意自旋轨道对旋转的假设。若额外要求保持 $N_\alpha,N_\beta$，可用的 Givens 数 $g$ 会减少；公式\eqref{eq:cnot-count}仍成立，只需替换相应的 $g$。
+
+\subsection{深度}
+
+\paragraph{Jastrow 部分。}
+式\eqref{eq:merged-j}中的 4 个合并后 $R_Z$ 可并行完成。对于三条链边，以边着色分为
+\begin{equation}
+    \{(0,1),(2,3)\},\qquad \{(1,2)\}.
+\end{equation}
+每个 $R_{ZZ}$ 按式\eqref{eq:rzz}需要 3 个基础门层。因此
+\begin{equation}
+    D_J=1+3+3=7.
+    \label{eq:jdepth}
+\end{equation}
+
+\paragraph{轨道旋转部分。}
+每个 Givens 的基础门深度为 7。若不作跨门全局重综合、直接串行执行 6 个 Givens，则
+\begin{equation}
+    D_U=6\times7=42,
+\end{equation}
+并得到保守的总深度
+\begin{equation}
+    D_{\mathrm{LUCJ}}=D_{U^\dagger}+D_J+D_U=42+7+42=91.
+    \label{eq:depth-conservative}
+\end{equation}
+
+若采用允许任意两比特耦合的三层匹配式 Givens 分解，例如每一层分别在不相交的对
+\begin{equation}
+    \{(0,1),(2,3)\},\qquad
+    \{(0,2),(1,3)\},\qquad
+    \{(0,3),(1,2)\}
+\end{equation}
+上执行两个 Givens，则 $D_U=3\times7=21$，总深度可降为
+\begin{equation}
+    \boxed{D_{\mathrm{LUCJ}}=21+7+21=49.}
+    \label{eq:depth-optimized}
+\end{equation}
+这里的 49 是\emph{在上述三层匹配分解可用时}的优化深度，而不是任意给定 Givens 串行乘积自动具有的深度。若把 HF 态制备也计入，两个 $X$ 门可并行，深度再加 1。
+
+\section{20 比特一维链：完整 UCJ 与 LUCJ}
+
+对于 $n=20$，完整 UCJ 保留所有两两耦合，二体 Jastrow 项数为
+\begin{equation}
+    \binom{20}{2}=190=O(n^2).
+\end{equation}
+LUCJ 仅保留链上的相邻边，项数为
+\begin{equation}
+    20-1=19=O(n).
+\end{equation}
+
+对 LUCJ，边集合可分为两组
+\begin{align}
+    \mathcal E_{\mathrm{even}}&=\{(0,1),(2,3),\ldots,(18,19)\},\\
+    \mathcal E_{\mathrm{odd}}&=\{(1,2),(3,4),\ldots,(17,18)\}.
+\end{align}
+同一组内的边不共享量子比特，故可并行执行。于是其\emph{原生} $R_{ZZ}$ 层深度为
+\begin{equation}
+    \boxed{D^{\mathrm{native}}_{R_{ZZ},\mathrm{LUCJ}}=2=O(1).}
+\end{equation}
+若每个 $R_{ZZ}$ 都分解为 CNOT--$R_Z$--CNOT，则相应的 CNOT 深度为 4。
+
+需要区分二体项数和并行深度。完整 UCJ 的 190 是项数（亦是完全串行执行时的深度），而不是允许任意逻辑两比特门并按边着色调度后的深度。忽略路由时，完整图 $K_{20}$ 的边色数为 19，故完整 UCJ 的逻辑原生 $R_{ZZ}$ 深度为 19；LUCJ 将其降至 2。对于真实一维硬件，完整 UCJ 的非邻接项还需要 SWAP 路由，实际深度会进一步增加。
+
+\section{结论}
+
+本报告得到以下结果：
+\begin{enumerate}
+    \item 二体 Jastrow 相位精确映射为两个单比特 $R_Z$ 与一个 $R_{ZZ}$，见式\eqref{eq:jastrow-map}；
+    \item H$_2$ 的局域 Jastrow 层含 $(0,1),(1,2),(2,3)$ 三条边，基础门深度为 7；
+    \item CRY 夹在同向 CNOT 之间可直观、精确地实现数守恒实 Givens rotation，但分解为基础门时不满足 2-CNOT 资源口径；
+    \item 采用题目指定的 2-CNOT Givens 分解时，若 $U$ 含 $g$ 个 Givens，则总 CNOT 数为 $4g+6$。一般 4 模实旋转取 $g=6$ 时为 30；
+    \item 在串行 Givens 线路下，完整单层 LUCJ 的保守深度为 91；若采用三层匹配式 Givens 编译，则深度为 49（不含 HF 初态制备）；
+    \item 对 20 比特一维链，LUCJ 有 19 个局域 $R_{ZZ}$ 项，并仅需 2 个原生 $R_{ZZ}$ 并行层。
+\end{enumerate}
+
+\end{document}
