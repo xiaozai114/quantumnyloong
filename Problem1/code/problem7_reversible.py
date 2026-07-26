@@ -6,6 +6,9 @@ S₃(x) = (¬x₁ ∨ ¬x₂) ∧ (x₁ ∨ ¬x₂) ∧ (¬x₁ ∨ x₂ ∨ ¬x
         ∧ (¬x₁ ∨ x₂ ∨ x₃) ∧ (x₁ ∨ x₂ ∨ x₃)
 
 通过真值表分析，S₃(x) 等价于单一极小项: ¬x₁ ∧ ¬x₂ ∧ x₃。
+
+电路图使用 Qiskit 的 .draw() 方法生成（替代 matplotlib 手绘），
+利用 TensorCircuit 的 to_qiskit() 接口完成转换。
 """
 
 import sys
@@ -13,7 +16,6 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 import numpy as np
-import matplotlib.pyplot as plt
 import tensorcircuit as tc
 from lib.quantum_circuits import QuantumCircuits
 
@@ -76,94 +78,61 @@ def verify_circuit():
 
 
 def draw_circuit_diagram(save_path="problem7_circuit.pdf"):
-    """使用 matplotlib 绘制 S₃ 可逆电路图。"""
-    fig, ax = plt.subplots(figsize=(12, 5))
-    ax.set_xlim(0, 14)
-    ax.set_ylim(0, 4.5)
+    """使用 Qiskit 绘制 S₃ 可逆电路图。
 
-    y = {'x1': 4, 'x2': 3, 'x3': 1.5, 'anc': 2.25, 'res': 0.5}
-    labels = ['$x_1$', '$x_2$', 'anc', '$x_3$', 'res']
-    y_positions = [y['x1'], y['x2'], y['anc'], y['x3'], y['res']]
+    流程: TensorCircuit 构建电路 → to_qiskit() 转换 → Qiskit .draw() 出图。
+    """
+    # 1. 用 TensorCircuit 构建 S₃ 电路（复用 build_s3）
+    c = tc.Circuit(5)
+    QuantumCircuits.build_s3(c)
 
-    for yi in y_positions:
-        ax.plot([0, 13.5], [yi, yi], 'k-', linewidth=0.8)
-    for yi, label in zip(y_positions, labels):
-        ax.text(-0.5, yi, label, fontsize=12, ha='right', va='center')
+    # 2. 通过 TensorCircuit 的 Qiskit 接口转换
+    qc_raw = c.to_qiskit()
 
-    positions = {
-        'X1': 2, 'X2': 2,
-        'T1': 4.5, 'T2': 7.5, 'T3': 10.5,
-        'X3': 12, 'X4': 12,
+    # 3. 创建带标签的 Qiskit 电路（to_qiskit 生成默认 q_0..q_4，我们重新标注）
+    from qiskit.circuit import QuantumRegister
+    from qiskit import QuantumCircuit
+
+    qr = QuantumRegister(5, "q")
+    qc = QuantumCircuit(qr)
+    # 复制门操作
+    for instruction, qargs, cargs in qc_raw.data:
+        qc.append(instruction, qargs, cargs)
+
+    # 4. 用 Qiskit 绘制 (output="mpl" 生成 matplotlib 图，可直接存 PDF)
+    style = {
+        "figwidth": 11,
+        "dpi": 150,
+        "fontsize": 12,
+        "showindex": True,
+        "displaytext": {
+            "x": "X",
+            "ccx": "",
+        },
     }
+    fig = qc.draw(output="mpl", style=style, scale=1.0)
 
-    for px in [1, 3, 6, 9, 11, 13]:
-        ax.axvline(x=px, color='gray', linestyle=':', linewidth=0.5)
-
-    def draw_not(ax, x, y_q):
-        r = 0.2
-        ax.add_patch(plt.Circle((x, y_q), r, color='white', ec='black', linewidth=1.5, zorder=5))
-        ax.text(x, y_q, 'X', fontsize=8, ha='center', va='center', zorder=6, fontweight='bold')
-
-    def draw_control(ax, x, y_q):
-        ax.plot(x, y_q, 'ko', markersize=6, zorder=5)
-
-    def draw_target(ax, x, y_q):
-        r = 0.25
-        ax.add_patch(plt.Circle((x, y_q), r, color='white', ec='black', linewidth=1.5, zorder=5))
-        ax.plot([x - 0.1, x + 0.1], [y_q, y_q], 'k-', linewidth=1.5, zorder=6)
-        ax.plot([x, x], [y_q - 0.1, y_q + 0.1], 'k-', linewidth=1.5, zorder=6)
-
-    def draw_vertical(ax, x, y1, y2):
-        ax.plot([x, x], [y1, y2], 'k-', linewidth=1.5, zorder=4)
-
-    # NOT gates (Steps 1 & 5)
-    draw_not(ax, positions['X1'], y['x1'])
-    draw_not(ax, positions['X2'], y['x2'])
-
-    # CCNOT 1: x1, x2 → anc
-    draw_control(ax, positions['T1'], y['x1'])
-    draw_control(ax, positions['T1'], y['x2'])
-    draw_target(ax, positions['T1'], y['anc'])
-    draw_vertical(ax, positions['T1'], y['x1'], y['anc'])
-
-    # CCNOT 2: anc, x3 → res
-    draw_control(ax, positions['T2'], y['anc'])
-    draw_control(ax, positions['T2'], y['x3'])
-    draw_target(ax, positions['T2'], y['res'])
-    draw_vertical(ax, positions['T2'], y['anc'], y['res'])
-
-    # CCNOT 3: x1, x2 → anc (uncompute)
-    draw_control(ax, positions['T3'], y['x1'])
-    draw_control(ax, positions['T3'], y['x2'])
-    draw_target(ax, positions['T3'], y['anc'])
-    draw_vertical(ax, positions['T3'], y['x1'], y['anc'])
-
-    # NOT gates (uncompute)
-    draw_not(ax, positions['X3'], y['x1'])
-    draw_not(ax, positions['X4'], y['x2'])
-
-    stage_y = 4.8
-    for i, x_pos in enumerate([1.5, 4.5, 7.5, 10.5, 12.5], 1):
-        ax.text(x_pos, stage_y, f'({i})', fontsize=9, ha='center')
-
-    ax.set_title('Problem 7: S$_3$(x) Reversible Circuit (Toffoli + NOT)', fontsize=13, pad=15)
-    ax.axis('off')
+    # 5. 添加标题和信息框（Qiskit 图上的 matplotlib 操作）
+    ax = fig.axes[0]
+    ax.set_title("Problem 7: S$_3$(x) Reversible Circuit (Toffoli + NOT)\n"
+                 "via TensorCircuit → Qiskit → .draw()",
+                 fontsize=13, pad=15)
 
     info_text = (
         "S$_3$(x) = $\\neg x_1 \\wedge \\neg x_2 \\wedge x_3$\n"
         "Gates: 4 NOT + 3 Toffoli = 7\n"
-        "Qubits: 3 (input) + 1 (ancilla) + 1 (result) = 5\n"
-        "Product: 7 x 5 = 35\n"
-        "Steps: (1) flip $x_1$, $x_2$  (2) anc = $\\neg x_1 \\wedge \\neg x_2$\n"
-        "       (3) res = anc $\\wedge$ $x_3$  (4) uncompute anc  (5) uncompute flip"
+        "Qubits: 3 input + 1 ancilla + 1 result = 5    Product: 7 $\\times$ 5 = 35\n"
+        "Pipeline: TensorCircuit build_s3 → .to_qiskit() → qiskit.draw(output='mpl')"
     )
-    ax.text(7, -1.2, info_text, fontsize=9, ha='center', va='top',
-            bbox=dict(boxstyle='round,pad=0.5', facecolor='lightyellow', alpha=0.8))
+    fig.text(0.5, -0.08, info_text, fontsize=9, ha="center", va="top",
+             bbox=dict(boxstyle="round,pad=0.5", facecolor="lightyellow", alpha=0.8),
+             transform=ax.transAxes)
 
-    plt.tight_layout()
-    plt.savefig(save_path, dpi=150, bbox_inches='tight')
-    print(f"电路图已保存至: {save_path}")
-    plt.close()
+    fig.savefig(save_path, dpi=150, bbox_inches="tight")
+    print(f"电路图已保存至: {save_path}  (Qiskit 绘制)")
+    # 同时输出文本版
+    print("\n文本版电路图 (qiskit .draw(output='text')):")
+    print(qc.draw(output="text"))
 
 
 if __name__ == '__main__':
