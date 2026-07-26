@@ -1,0 +1,244 @@
+% !TEX program = xelatex
+\documentclass[fontset=mac]{ctexart}
+
+% 中文支持由 ctexart 文档类自动提供
+
+% 页面设置
+\usepackage[top=2.54cm, bottom=2.54cm, left=3.18cm, right=3.18cm]{geometry}
+
+% 数学公式
+\usepackage{amsmath, amssymb, amsthm}
+
+% 图形与表格
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+
+% 列表与颜色
+\usepackage{enumitem}
+\usepackage{xcolor}
+
+% 超链接
+\usepackage{hyperref}
+
+% 量子态和算符
+\usepackage{bm}
+\newcommand{\ket}[1]{|#1\rangle}
+\newcommand{\bra}[1]{\langle #1|}
+\newcommand{\braket}[2]{\langle #1|#2\rangle}
+
+\title{Problem 2: Complete Solution}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{enumerate}
+    \item \textbf{Build Hamiltonian and Mapping Comparison} \\ To place a molecule on a quantum computer, one must first map the fermionic Hamiltonian to qubit Pauli operators. Jordan-Wigner (JW) and Parity are two common mappings --- they are mutually exclusive alternatives. Closed-shell molecules possess $N_\alpha$ and $N_\beta$ particle-number conservation symmetries ($\mathbb{Z}_2$ symmetries), each eliminating 1 qubit.
+
+    \textbf{Given:} Molecules (a) H$_2$ (STO-3G) and (d) N$_2$ (STO-3G).
+
+    \textbf{Solve:}
+    \begin{enumerate}[label=(\alph*)]
+        \item For H$_2$, use PySCF to compute RHF and extract one-body integrals $h_{pq}$ ($p,q$ are spin-orbital indices) and two-body integrals $(pq|rs)$ (chemist's notation, $p,q,r,s$ are spin-orbital indices). Write the second-quantized Hamiltonian $\hat{H} = \sum_{pq} h_{pq}\hat{a}_p^\dagger\hat{a}_q + \frac{1}{2}\sum_{pqrs}(pq||rs)\hat{a}_p^\dagger\hat{a}_q^\dagger\hat{a}_s\hat{a}_r + E_{\text{core}}$.
+        \item Using $h_{01}\hat{a}_0^\dagger\hat{a}_1$ (subscripts 0,1 are spin-orbital indices) as an example, derive its Pauli string expansion under JW.
+        \item Count Pauli terms and maximum Pauli weight (non-$I$ count) for H$_2$ under both mappings.
+        \item Use the two $\mathbb{Z}_2$ symmetries ($N_\alpha{=}1$, $N_\beta{=}1$) to reduce H$_2$ from 4 to 2 qubits. Write the reduced Hamiltonian explicitly; explain how JW and parity differ in achieving this.
+        \item Repeat (c) for N$_2$ (20 qubits).
+    \end{enumerate}
+
+    \emph{Advanced Challenge:} BK mapping has Z-string length $O(\log n)$, hence max weight far lower than JW. For N$_2$ ($n{=}10$), what is BK's max weight? How many times lower is the circuit depth?
+
+    \textbf{Solution:}
+    \begin{enumerate}[label=(\alph*)]
+        \item
+        \item
+        \item
+        \item
+        \item
+    \end{enumerate}
+
+    \item \textbf{HF State and SQD Subspace Diagonalization} \\ SQD samples $S$ bitstrings from a quantum state $\ket{\Psi}$, each corresponding to an electronic configuration (Slater determinant $\ket{D_k}$), and exactly diagonalizes the CI matrix $H_{kl}=\bra{D_k}\hat{H}\ket{D_l}$ in the subspace $\mathcal{S}=\text{span}\{\ket{D_k}\}$. The simplest initial state is the HF state $\ket{\text{HF}} = \prod_{i\in\text{occ}}\hat{a}_i^\dagger\ket{0}$ --- a single computational basis state.
+
+    \textbf{Given:} Molecule (a) H$_2$, 4 spin-orbitals (indexed 0--3), 2 electrons.
+
+    \textbf{Solve:} Determine which computational basis state $\ket{b_3 b_2 b_1 b_0}$ ($b_i\in\{0,1\}$) H$_2$'s HF state corresponds to under JW, and write the preparation circuit. Manually list all $\binom{4}{2}{=}6$ configurations, build the $6\times6$ CI matrix, exactly diagonalize, and compare with PySCF FCI energy. If the subspace contains only HF + all single excitations (no doubles), what does the SQD energy equal? Explain why using Slater-Condon rules and HF self-consistency.
+
+    \emph{Advanced Challenge:} Stretch H$_2$ bond to 3.0 \AA. Does the conclusion about HF + singles still hold? What happens to HF self-consistency in the strongly correlated regime?
+
+    \textbf{Solution:}
+
+    \vspace{2em}
+
+    \item \textbf{Configuration Recovery: Principle and Implementation} \\ Quantum hardware noise causes sampled bitstrings to violate particle-number conservation. Configuration recovery uses the average occupancy $\bar{n}_i = \frac{1}{S}\sum_{s=1}^{S} b_i^{(s)}$ ($b_i^{(s)}$ = value of bit $i$ in the $s$-th sampled bitstring) to correct erroneous bitstrings.
+
+    \textbf{Given:} H$_2$'s HF bitstring is $\ket{0011}$ (see Problem 2), noise flip probability 30\%, sample count $S{=}1000$.
+
+    \textbf{Solve:}
+    \begin{enumerate}[label=(\alph*)]
+        \item Generate $S{=}1000$ noisy bitstrings by independently flipping each bit with 30\% probability. Implement configuration recovery: for each violating bitstring, flip the bit with largest $|b_i - \bar{n}_i|$ until constraints satisfied. Verify correctness.
+        \item Derive: why is ``flip the largest $|b_i - \bar{n}_i|$'' optimal in the maximum likelihood sense?
+        \item Increase noise rate from 10\% to 50\%. Plot recovery success rate vs.\ noise rate. Determine the failure threshold (50\% success rate) and explain the physics.
+    \end{enumerate}
+
+    \emph{Advanced Challenge:} Formulate as Bayesian inference --- $\bar{n}_i$ as prior, observed bitstring as likelihood, find MAP configuration. How does this relate to (b)?
+
+    \textbf{Solution:}
+    \begin{enumerate}[label=(\alph*)]
+        \item
+        \item
+        \item
+    \end{enumerate}
+
+    \item \textbf{LUCJ Quantum Circuit Gate Decomposition} \\ Sampling from HF yields only 1 configuration. The LUCJ ansatz uses CCSD amplitudes to build a correlated state. Its UCJ operator is $\hat{U}_{\text{UCJ}} = \hat{U}\, e^{i\hat{J}}\, \hat{U}^\dagger$, where $\hat{U} = e^{\hat{\kappa}}$ is orbital rotation ($\hat{\kappa}$ anti-Hermitian), $\hat{J} = \sum_{i,j} J_{ij}\hat{n}_i\hat{n}_j$ is diagonal Coulomb. The ``local'' truncation retains only adjacent-qubit $R_{ZZ}$. Givens rotation = 2 CNOT + single-qubit gates; $R_{ZZ}$ = 2 CNOT + 1 $R_Z$.
+
+    \textbf{Given:} Molecule (a) H$_2$ (1 UCJ layer); $n{=}20$ qubits on a 1D chain.
+
+    \textbf{Solve:}
+    \begin{enumerate}[label=(\alph*)]
+        \item Derive how $e^{iJ_{ij}\hat{n}_i\hat{n}_j}$ maps to $R_{ZZ}$. Hint: use $\hat{n}_i = \frac{I-Z_i}{2}$.
+        \item Build the complete LUCJ circuit for H$_2$, count CNOTs and depth.
+        \item For $n{=}20$ on 1D chain, use edge coloring to argue: full UCJ $R_{ZZ}$ depth $O(n^2)$, LUCJ $O(1)$. Give specific values.
+    \end{enumerate}
+
+    \emph{Advanced Challenge:} On 2D heavy-hex topology, what is LUCJ's $R_{ZZ}$ layer depth? Advantages over 1D?
+
+    \textbf{Solution:}
+    \begin{enumerate}[label=(\alph*)]
+        \item
+        \item
+        \item
+    \end{enumerate}
+
+    \item \textbf{LUCJ-SQD vs HF-SQD: How Entanglement Improves Sampling} \\ The HF state is a computational basis state --- measurement is deterministic, yielding only 1 configuration. The LUCJ state $\ket{\Psi_{\text{LUCJ}}} = \hat{U}_{\text{UCJ}}\ket{\text{HF}}$ contains CNOT gates creating entanglement, making measurement random and covering more configurations.Parameter \texttt{ccsd\_scale} $\lambda\in[0,1]$: $\lambda{=}0$ gives HF state.
+
+    \textbf{Given:} Molecule (b) LiH (STO-3G), $\lambda{=}0.05$, $S{=}1000$.
+
+    \textbf{Solve:}
+    \begin{enumerate}[label=(\alph*)]
+        \item Sample $S{=}1000$ bitstrings from HF and LUCJ ($\lambda{=}0.05$) for LiH, feed into SQD, compare energy accuracy vs.\ FCI.
+        \item Explain from quantum information perspective why LUCJ can cover more FCI configurations (key mechanism?), and discuss what $\lambda{=}0$ and $\lambda{=}1$ correspond to. Why use 0.05 instead of 1?
+    \end{enumerate}
+
+    \emph{Advanced Challenge:} Is there a quantitative relationship between LUCJ state's entanglement entropy and required samples $S$?
+
+    \textbf{Solution:}
+    \begin{enumerate}[label=(\alph*)]
+        \item
+        \item
+    \end{enumerate}
+
+    \item \textbf{SQD vs VQE: Quantum Resources and Energy Accuracy (Open)} \\ VQE prepares $\ket{\Psi(\boldsymbol{\theta})}$ ($p$ parameters), computes gradients via parameter-shift ($2p$ evaluations per step), each energy evaluation measures $O(N^4)$ Pauli terms with $O(1/\epsilon^2)$ shots per term. SQD prepares a fixed state, samples $S$ bitstrings, iterates $N_{\text{iter}}$ times. Current NISQ: $p_{2q}\sim 0.01$.
+
+    \textbf{Given:} Molecule (b) LiH ($N{=}8$). VQE: $p{=}4$, $N_{\text{iter}}{=}100$; SQD: $S{=}1000$, $N_{\text{iter}}{=}5$; $\epsilon{=}10^{-3}$ Ha.
+
+    \textbf{Solve:}
+    \begin{enumerate}[label=(\alph*)]
+        \item \emph{Quantum resources}: Compute total circuit executions for both, compare orders of magnitude.
+        \item \emph{Energy accuracy}: Given $\ket{\Psi} = \sum_x c_x\ket{x}$, define $\mathcal{S}=\text{span}\{\ket{x}:c_x\neq 0\}$. Prove $E_{\text{SQD}} = \min_{\ket{\phi}\in\mathcal{S}}\bra{\phi}\hat{H}\ket{\phi} \leq \bra{\Psi}\hat{H}\ket{\Psi} = E_{\text{VQE}}$. When does equality hold?
+        \item \emph{Balanced comparison}: List advantages/disadvantages of SQD and VQE in: circuit depth, mapping flexibility, ansatz choice, noise robustness, measurement overhead, variational scope. Which is more practical on NISQ ($p_{2q}\sim 0.01$)? In the FTQC era ($p_{2q}<10^{-4}$)?
+    \end{enumerate}
+
+    \emph{Advanced Challenge:} Design a hybrid --- VQE's shallow circuit for state prep, SQD's diagonalization for post-processing. What is the energy lower bound?
+
+    \textbf{Solution:}
+    \begin{enumerate}[label=(\alph*)]
+        \item
+        \item
+        \item
+    \end{enumerate}
+
+    \item \textbf{FCI Space Explosion and EWF's Scaling Advantage} \\ FCI dimension $\binom{2n}{N_e}$ grows exponentially. EWF splits into $F$ fragments, each with $n_{\text{frag}}$ orbitals and $N_{\text{frag}}$ electrons, solved independently.
+
+    \textbf{Given:} Test molecules (a)--(e). C$_2$H$_4$'s EWF max fragment: 20 qubits {\color{red}($n_{\text{frag}}{=}10$).}
+
+    \textbf{Solve:}
+    \begin{enumerate}[label=(\alph*)]
+        \item Compute FCI dimensions for all 5 molecules, tabulate, observe trend.
+        \item Prove: fixed $n_{\text{frag}}$, $F=N/n_{\text{frag}}$ $\to$ EWF cost $O(N)$.
+        \item Compute C$_2$H$_4$ max fragment FCI dimension, compare with full $\sim 3.1\times10^7$.
+        \item Derive crossover: direct FCI $O(\binom{2N}{N_e}^3)$ vs.\ EWF $F \times O(\binom{2n_{\text{frag}}}{N_{\text{frag}}}^3)$. At what $n_{\text{frag}}$ are they equal?
+    \end{enumerate}
+
+    \emph{Advanced Challenge:} Under 20-qubit NISQ constraint ($n_{\text{frag}}\leq 10$), optimal $n_{\text{frag}}$ for N$_2$ and C$_2$H$_4$?
+
+    \textbf{Solution:}
+    \begin{enumerate}[label=(\alph*)]
+        \item 直接计算即可，H$_2$是$\binom{4}{2}=6$，LiH是$\binom{8}{4}=70$，H$_2$O是$\binom{14}{10}=1001$，N$_2$是$\binom{20}{14}=38760$，C$_2$H$_4$是$\binom{28}{16}=30421755$。
+        \item 当 $n_{\text{frag}}$ 固定时，每个片段的 FCI 维数 $\binom{2n_{\text{frag}}}{N_{\text{frag}}}$ 有上界，其对角化代价为 $O(D_{\text{frag}}^3)=O(1)$，片段总数为 $F = N/n_{\text{frag}}$，所以 EWF 总代价为 $O(N)$。
+        \item C$_2$H$_4$ 最大碎片为 20 量子比特，该碎片的 FCI 维数最大是 $\binom{20}{10}=184756$，全分子的 FCI 维数最大是 $30421755$，二者之比
+        \[
+            \frac{184756}{30421755}\approx 0.6\%.
+        \]
+        \item 假设电子均匀地分布在每个碎片中，得到方程
+        \[
+            \binom{2n_{\text{frag}}}{N_e n_{\text{frag}}/N}
+            =
+            \binom{2N}{N_e}
+            \left(\frac{n_{\text{frag}}}{N}\right)^{1/3}.
+        \]
+        我们来证明：对于 $n_{\text{frag}}<N$，左边总是比右边小很多倍，进而 EWF 总是比直接的 FCI 需要更少的时间复杂度（显然当 $n_{\text{frag}}=N$ 时是相等的）。
+
+        设 $\frac{N}{n_{\text{frag}}}=t$，把左边的组合数记为 $\binom{a}{b}$，有如下推导：
+        \[
+            \binom{2N}{N_e}=\binom{ta}{tb}=\prod_{i=1}^{tb}\frac{ta-i+1}{tb-i+1}=\prod_{\substack{i=1\\t\nmid i-1}}^{n}\frac{ta-i+1}{tb-i+1}\cdot\binom{a}{b}\geq(ta-tb+1)\binom{a}{b}>\sqrt[3]{t}\binom{a}{b}.
+        \]
+        证明完毕。
+    \end{enumerate}
+
+    \item \textbf{DMET Fragmentation: Schmidt Decomposition and Bath Exactness} \\ EWF uses Schmidt decomposition: $\ket{\Psi} = \sum_{k=1}^{r}\lambda_k\ket{u_k}\otimes\ket{v_k}$ ($\lambda_k\geq 0$ Schmidt coefficients, $r$ Schmidt rank), retaining $n_{\text{bath}}$ largest-$\lambda_k$ environment states as bath. DMET minimal bath ($n_{\text{bath}}{=}n_{\text{imp}}$) is exact at HF level ($\gamma^{\text{HF}}$ is a projector: $\gamma^2{=}\gamma$), but becomes inexact when solver is upgraded.
+
+    \textbf{Given:} Molecule (c) H$_2$O, DMET atomic fragmentation.
+
+    \textbf{Solve:}
+    \begin{enumerate}[label=(\alph*)]
+        \item Prove $r \leq \min(\dim\mathcal{H}_{\text{imp}}, \dim\mathcal{H}_{\text{env}})$, derive bath upper bound $n_{\text{imp}}$.
+        \item Prove DMET minimal bath exactly reproduces HF density matrix. Key: projector property.
+        \item When solver upgrades to CCSD/SQD , $\gamma^{\text{corr}} \neq (\gamma^{\text{corr}})^2$. Why is minimal bath no longer exact? What correlation does MP2 bath supplement?
+    \end{enumerate}
+
+    \emph{Advanced Challenge:} How is DMET's self-consistent $\mu$ determined? Oneshot vs.\ self-consistent DMET trade-offs?
+
+    \textbf{Solution:}
+    \begin{enumerate}[label=(\alph*)]
+        \item
+        \item
+        \item
+    \end{enumerate}
+
+    \item \textbf{Energy Reconstruction: Algebraic Elimination of Double-Counting} \\ Naive sum $\sum_f E_f$ is too large (overlapping bath HF contributions counted twice). Standard reconstruction: $E_{\text{total}} = E_{\text{MF}} + \sum_f (E_f - E_{\text{MF},f})$. Fragment energy decomposes:  $E_f = E_{\text{core},f} + E_{\text{elec},f}$ (core = nuclear repulsion + frozen core, solver-independent; electronic = solver-dependent).
+
+    \textbf{Given:} Molecule (c) H$_2$O, fragments O and H$_2$. Values (Ha): $E_{\text{MF}}{=}{-}74.963$, $E_{\text{O}}{=}{-}75.010$, $E_{\text{MF,O}}{=}{-}74.980$, $E_{\text{H}_2}{=}{-}75.005$, $E_{\text{MF,H}_2}{=}{-}74.983$.
+
+    \textbf{Solve:} Substitute $E_f = E_{\text{core},f} + E_{\text{elec},f}$ and $E_{\text{MF},f} = E_{\text{core},f} + E_{\text{HF-elec},f}$ into $(E_f - E_{\text{MF},f})$. Prove $E_{\text{core},f}$ cancels, leaving $\Delta E_{\text{corr},f} = E_{\text{elec},f} - E_{\text{HF-elec},f}$. Why is $\Delta E_{\text{corr},f}$ local and free from double-counting? Verify: HF fragments $\to$ $E_{\text{total}} = E_{\text{MF}}$. Compute reconstructed total energy.
+
+    \emph{Advanced Challenge:} Partitioned cumulant reconstruction --- basic idea? When significantly more accurate?
+
+    \textbf{Solution:}
+
+    \vspace{2em}
+
+    \item \textbf{Full Pipeline Integration and End-to-End Error Analysis (Open)} \\ Chaining Problems 1--9 gives the complete EWF-SQD pipeline: RHF $\to$ DMET fragmentation $\to$ per-fragment LUCJ-SQD $\to$ energy reconstruction. Three error sources: $\epsilon_{\text{frag}}$ (bath truncation, decreases with larger fragments), $\epsilon_{\text{SQD}}$ (incomplete sampling, decreases with more samples $S$), $\epsilon_{\text{noise}}$ (quantum noise, related to circuit depth and $p_{2q}$).
+
+    \textbf{Given:} Molecules (a) H$_2$, (c) H$_2$O, (d) N$_2$, (e) C$_2$H$_4$. Fixed budget $B$. Error model $\epsilon_{\text{total}} \approx \epsilon_{\text{frag}} + \epsilon_{\text{SQD}}$, cost model $B = c_1 N n_{\text{frag}}^3 + c_2 N S^3 / n_{\text{frag}}$.
+
+    \textbf{Solve:}
+    \begin{enumerate}[label=(\alph*)]
+        \item Run full pipeline on all 4 molecules, report $E_{\text{MF}}$, $E_{\text{EWF-SQD}}$, $E_{\text{FCI}}$ (or CCSD).
+        \item Under fixed $B$, use Lagrange multipliers to derive optimal allocation $\epsilon_{\text{frag}} \approx \epsilon_{\text{SQD}}$ (``barrel effect'').
+        \item Discuss: H$_2$O (14q) $\to$ C$_2$H$_4$ (28q), which error grows fastest? N$_2$ bond stretched to 2.0 \AA, which degrades fastest?
+    \end{enumerate}
+
+    \emph{Advanced Challenge:} In FTQC era, SQD $\to$ QPE. How does EWF reduce QPE resources from $O(N/\epsilon)$ to $O(n_{\text{frag}}/\epsilon)$? At what $p_{2q}$ does QPE outperform SQD?
+
+    \textbf{Solution:}
+    \begin{enumerate}[label=(\alph*)]
+        \item
+        \item
+        \item
+    \end{enumerate}
+
+\end{enumerate}
+
+\end{document}
