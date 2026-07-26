@@ -1,0 +1,190 @@
+% !TEX program = xelatex
+\documentclass[11pt,a4paper]{article}
+\usepackage[UTF8]{ctex}
+\usepackage{amsmath,amssymb,bm}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{booktabs}
+\usepackage{enumitem}
+
+\title{Q08 解答}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+分子：(c) H$_2$O，DMET 按原子分片。
+
+
+\section{(a) Schmidt 秩上界与浴数上界}
+
+\subsection{一般量子态的 Schmidt 秩上界}
+
+设量子态 $|\Psi\rangle \in \mathcal{H}_{\text{imp}} \otimes \mathcal{H}_{\text{env}}$，在基 $\{|a_i\rangle\}$ 和 $\{|b_j\rangle\}$ 下展开：
+\begin{equation}
+  |\Psi\rangle = \sum_{i=1}^{d_{\text{imp}}} \sum_{j=1}^{d_{\text{env}}} c_{ij}\, |a_i\rangle \otimes |b_j\rangle
+\end{equation}
+
+系数矩阵 $C = (c_{ij})$ 的维度为 $d_{\text{imp}} \times d_{\text{env}}$，其中 $d_{\text{imp}} = \dim\mathcal{H}_{\text{imp}}$，$d_{\text{env}} = \dim\mathcal{H}_{\text{env}}$。
+
+对 $C$ 做奇异值分解 $C = U\Sigma V^\dagger$，代入并换基：
+\begin{equation}
+  |\Psi\rangle = \sum_{k=1}^{r} \lambda_k\, |u_k\rangle \otimes |v_k\rangle
+\end{equation}
+
+其中 $r = \text{rank}(C)$ 为 Schmidt 秩，$\lambda_k \geq 0$ 为 Schmidt 系数，$\{|u_k\rangle\}$ 和 $\{|v_k\rangle\}$ 各自正交归一。
+
+\begin{equation}
+  \boxed{\;r \leq \min(\dim\mathcal{H}_{\text{imp}},\; \dim\mathcal{H}_{\text{env}})\;}
+\end{equation}
+
+$C$ 最多有 $\min(d_{\text{imp}}, d_{\text{env}})$ 个非零奇异值。
+
+\subsection{HF 态的更紧上界：$\gamma^2 = \gamma$ 的作用}
+
+HF 态的 1-RDM $\gamma$ 是投影算符（幂等）：$\gamma^2 = \gamma$。
+
+将 $\gamma$ 按碎片 (imp) 和环境 (env) 分块：
+\begin{equation}
+  \gamma = \begin{pmatrix} \gamma_{\text{II}} & \gamma_{\text{IE}} \\ \gamma_{\text{EI}} & \gamma_{\text{EE}} \end{pmatrix}
+\end{equation}
+
+幂等条件 $\gamma^2 = \gamma$ 的左下块给出：
+\begin{equation}
+  \gamma_{\text{EI}}\,\gamma_{\text{II}} + \gamma_{\text{EE}}\,\gamma_{\text{EI}} = \gamma_{\text{EI}}
+\end{equation}
+
+移项：
+\begin{equation}
+  (I - \gamma_{\text{EE}})\,\gamma_{\text{EI}} = \gamma_{\text{EI}}\,\gamma_{\text{II}}
+  \label{eq:idem}
+\end{equation}
+
+对两边取秩。右边的秩：
+\begin{equation}
+  \text{rank}(\gamma_{\text{EI}}\,\gamma_{\text{II}}) \leq \min\big(\text{rank}(\gamma_{\text{EI}}),\; \text{rank}(\gamma_{\text{II}})\big) \leq \text{rank}(\gamma_{\text{II}}) \leq n_{\text{imp}}
+\end{equation}
+
+左边的秩：当 $I - \gamma_{\text{EE}}$ 可逆时，$\text{rank}((I-\gamma_{\text{EE}})\gamma_{\text{EI}}) = \text{rank}(\gamma_{\text{EI}})$。即使不可逆，秩只减不增，故 $\text{rank}(\gamma_{\text{EI}}) \geq \text{rank}(\text{左边}) = \text{rank}(\text{右边})$。
+
+结合等式 \eqref{eq:idem}：
+\begin{equation}
+  \text{rank}(\gamma_{\text{EI}}) = \text{rank}(\gamma_{\text{EI}}\,\gamma_{\text{II}}) \leq \text{rank}(\gamma_{\text{II}}) \leq n_{\text{imp}}
+\end{equation}
+
+$\gamma_{\text{EI}}$ 的秩 = 碎片-环境独立耦合方向数 = 浴轨道数 $n_{\text{bath}}$。
+
+\begin{equation}
+  \boxed{\;n_{\text{bath}} = \text{rank}(\gamma_{\text{EI}}) \leq n_{\text{imp}}\;}
+\end{equation}
+
+对于闭壳层 HF，通常取等号：$n_{\text{bath}} = n_{\text{imp}}$。
+
+\section{(b) DMET 最小浴精确复现 HF 密度矩阵}
+
+\subsection{第一步：构造浴轨道}
+
+对角化 $\gamma_{\text{II}}$ 得碎片自然轨道 $\{v_k\}$ 和占据数 $\{\lambda_k\}$：
+\begin{equation}
+  \gamma_{\text{II}}\, v_k = \lambda_k\, v_k, \qquad k = 1, \ldots, n_{\text{imp}}
+\end{equation}
+
+对每个 $v_k$（升维为 $\tilde{v}_k$），构造耦合向量：
+\begin{equation}
+  w_k = (I - P_{\text{imp}})\,\gamma\,\tilde{v}_k
+\end{equation}
+
+归一化得浴轨道 $b_k = w_k / |w_k|$。
+
+\subsection{第二步：用 $\gamma^2 = \gamma$ 计算耦合强度}
+
+\begin{align}
+  |w_k|^2 &= \tilde{v}_k^\dagger\, \gamma\, (I - P_{\text{imp}})\, \gamma\, \tilde{v}_k \\
+  &= \tilde{v}_k^\dagger\, \gamma^2\, \tilde{v}_k - \tilde{v}_k^\dagger\, \gamma\, P_{\text{imp}}\, \gamma\, \tilde{v}_k \\
+  &= \underbrace{\tilde{v}_k^\dagger\, \gamma\, \tilde{v}_k}_{= \lambda_k\ (\text{特征方程})} - \underbrace{|\gamma_{\text{II}} v_k|^2}_{= \lambda_k^2\ (\text{特征方程})} \qquad (\text{用了 } \gamma^2 = \gamma) \\
+  &= \lambda_k - \lambda_k^2 = \lambda_k(1 - \lambda_k)
+\end{align}
+
+\begin{itemize}
+  \item 耦合强度：$c_k = |w_k| = \sqrt{\lambda_k(1-\lambda_k)}$（第二步用 $\gamma^2 = \gamma$ 算出）
+  \item 浴占据数：$\mu_k = 1 - \lambda_k$（2$\times$2 块幂等条件给出）
+\end{itemize}
+
+\subsection{第三步：组装嵌入空间密度矩阵}
+
+在基 $\{v_1, \ldots, v_{n_{\text{imp}}}, b_1, \ldots, b_{n_{\text{imp}}}\}$ 下，全分子 $\gamma$ 限制到嵌入空间的形式是 $n_{\text{imp}}$ 个\textbf{独立的 $2 \times 2$ 块}：
+\begin{equation}
+  \gamma\big|_{\text{embed}} = \bigoplus_{k=1}^{n_{\text{imp}}} \begin{pmatrix} \lambda_k & c_k \\ c_k & \mu_k \end{pmatrix}
+  = \bigoplus_{k=1}^{n_{\text{imp}}} \begin{pmatrix} \lambda_k & \sqrt{\lambda_k(1-\lambda_k)} \\ \sqrt{\lambda_k(1-\lambda_k)} & 1-\lambda_k \end{pmatrix}
+\end{equation}
+
+``独立''是因为：碎片自然轨道之间无耦合（$\gamma_{\text{II}}$ 已对角化）；浴轨道之间也无耦合（浴由 $\gamma_{\text{EI}}$ 的列空间构造，不同 $k$ 对应不同列方向，在 $\gamma^2 = \gamma$ 下正交）。
+
+每个 $2 \times 2$ 块的\textbf{左上角}就是 $\lambda_k$。因此嵌入空间密度矩阵的碎片块为：
+\begin{equation}
+  \big(\gamma\big|_{\text{embed}}\big)_{\text{II}} = \text{diag}(\lambda_1, \lambda_2, \ldots, \lambda_{n_{\text{imp}}}) = \gamma_{\text{II}}^{\text{full}}
+\end{equation}
+
+最后一步用了：$\gamma_{\text{II}}^{\text{full}}$ 在自然轨道基下也是 $\text{diag}(\lambda_1, \ldots, \lambda_{n_{\text{imp}}})$（第一步对角化的定义）。
+
+\subsection{第四步：证明 $\gamma|_{\text{embed}}$ 是嵌入空间的 HF 解}
+
+\begin{enumerate}
+  \item \textbf{$\gamma\big|_{\text{embed}}$ 幂等}：每个 $2 \times 2$ 块满足 $\begin{pmatrix} \lambda & c \\ c & 1{-}\lambda \end{pmatrix}^2 = \begin{pmatrix} \lambda & c \\ c & 1{-}\lambda \end{pmatrix}$（直接验证：$\lambda^2 + c^2 = \lambda^2 + \lambda(1{-}\lambda) = \lambda$ ✓），故整体幂等 → 对应 Slater 行列式。
+
+  \item \textbf{嵌入空间是 $\gamma$-不变的}：$\gamma$ 作用在 $v_k$ 上 $\to \lambda_k v_k + c_k b_k$（碎片 ∪ 浴，不漏出）；$\gamma$ 作用在 $b_k$ 上 $\to c_k v_k + \mu_k b_k$（同样不漏出，用 $(I - \gamma_{\text{EE}})\gamma_{\text{EI}} = \gamma_{\text{EI}}\gamma_{\text{II}}$ 推出）。所以 $\gamma$ 把嵌入空间映射到自身。
+
+  \item \textbf{Fock 方程保持}：全分子 HF 满足 $[F, \gamma] = 0$。因为嵌入空间 $\gamma$-不变，$F$ 和 $\gamma$ 都可干净地限制到嵌入空间，对易关系保持：$[F\big|_{\text{embed}}, \gamma\big|_{\text{embed}}] = 0$。这就是嵌入空间的 HF 方程。
+\end{enumerate}
+
+因此 $\gamma\big|_{\text{embed}}$ 是 $H_{\text{embed}}$ 的 HF 密度矩阵，其碎片块：
+\begin{equation}
+  \boxed{\;\gamma_{\text{II}}^{\text{embed}} = \text{diag}(\lambda_1, \ldots, \lambda_{n_{\text{imp}}}) = \gamma_{\text{II}}^{\text{full}}\;}
+\end{equation}
+
+\section{(c) 求解器升级后最小浴不再精确}
+
+\subsection{为什么 $\gamma^{\text{corr}} \neq (\gamma^{\text{corr}})^2$}
+
+HF 态是单个 Slater 行列式，1-RDM 是投影算符：$\gamma^{\text{HF}}$ 的特征值为 0 或 1，满足 $\gamma^2 = \gamma$。
+
+CCSD/SQD 给出的是\textbf{关联态}，不再是单个 Slater 行列式。关联态的 1-RDM $\gamma^{\text{corr}}$ 的特征值（自然轨道占据数）在 0 和 1 之间取任意值，例如 $n_p = 0.83, 0.12, 0.97$ 等。
+
+验证：若 $\gamma$ 的特征值为 $n_p$，则 $\gamma^2$ 的特征值为 $n_p^2$。$\gamma^2 = \gamma$ 要求 $n_p^2 = n_p$，即 $n_p \in \{0, 1\}$。关联态 $n_p \notin \{0, 1\}$，故：
+\begin{equation}
+  \boxed{\;(\gamma^{\text{corr}})^2 \neq \gamma^{\text{corr}}\;}
+\end{equation}
+
+\subsection{为什么最小浴不再精确}
+
+(b) 的证明\textbf{完全依赖} $\gamma^2 = \gamma$。具体来说：
+
+\begin{enumerate}
+  \item 浴数上界 $n_{\text{bath}} \leq n_{\text{imp}}$ 来自 $\gamma^2 = \gamma$ 给出的秩不等式 \eqref{eq:idem}。对关联态，$(\gamma^{\text{corr}})^2 \neq \gamma^{\text{corr}}$，该不等式不成立，Schmidt 秩可能超过 $n_{\text{imp}}$。
+
+  \item 浴轨道属性（占据数 $\mu_k = 1-\lambda_k$，耦合 $c_k = \sqrt{\lambda_k(1-\lambda_k)}$）由 $\gamma^2 = \gamma$ 的 2$\times$2 块推导。对关联态，2$\times$2 块不再满足 $\gamma^2 = \gamma$，这些公式失效。
+
+  \item 配对结构（每个碎片自然轨道恰好配一个浴轨道）依赖 $\gamma^2 = \gamma$。关联态的纠缠结构更复杂——一个碎片自然轨道可能和多个环境方向耦合。
+\end{enumerate}
+
+\textbf{结论}：用 HF 构造的 $n_{\text{imp}}$ 个浴轨道，对关联态来说可能\textbf{不够}——丢失了部分碎片-环境纠缠信息。
+
+\subsection{MP2 浴补充了什么关联}
+
+HF 浴编码的是\textbf{平均场级别}的碎片-环境纠缠（静态关联）。缺失的是\textbf{动力学关联}——电子之间的瞬时涨落耦合。
+
+MP2（二阶微扰理论）通过微扰修正计算关联态的 1-RDM 修正 $\delta\gamma$：
+\begin{equation}
+  \gamma^{\text{corr}} \approx \gamma^{\text{HF}} + \delta\gamma^{\text{MP2}}
+\end{equation}
+
+MP2 浴自然轨道（BNO）从 $\delta\gamma^{\text{MP2}}$ 的环境部分提取。BNO 的占据数大致呈指数衰减——前几个 BNO 携带大部分动力学关联信息。
+
+\textbf{MP2 浴补充的内容}：
+\begin{itemize}
+  \item HF 浴只捕获了 $\gamma^{\text{HF}}$ 的碎片-环境耦合（静态部分）
+  \item MP2 浴额外捕获 $\delta\gamma^{\text{MP2}}$ 的碎片-环境耦合（动力学部分）
+  \item 截断阈值 $\eta$ 控制 BNO 数量：$\eta$ 越小，浴越大，精度越高但代价越大
+\end{itemize}
+
+\end{document}

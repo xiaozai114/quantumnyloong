@@ -1,0 +1,83 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[UTF8]{ctex}
+\usepackage{amsmath,amssymb}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{booktabs}
+
+\title{Q09 解答：能量重构——双计问题的代数消除}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+分子：(c) H$_2$O，碎片为 O 和 H$_2$。
+
+数值（Ha）：$E_{\text{MF}} = -74.963$，$E_O = -75.010$，$E_{\text{MF},O} = -74.980$，$E_{H_2} = -75.005$，$E_{\text{MF},H_2} = -74.983$。
+
+\section{证明 $E_{\text{core},f}$ 抵消}
+
+片段能量分解为 solver 无关的 core 部分和 solver 相关的电子部分：
+\begin{align}
+  E_f &= E_{\text{core},f} + E_{\text{elec},f} \\
+  E_{\text{MF},f} &= E_{\text{core},f} + E_{\text{HF-elec},f}
+\end{align}
+
+\begin{align}
+  E_f - E_{\text{MF},f}
+  &= \big(E_{\text{core},f} + E_{\text{elec},f}\big) - \big(E_{\text{core},f} + E_{\text{HF-elec},f}\big) \\
+  &= \big(E_{\text{core},f} - E_{\text{core},f}\big) + \big(E_{\text{elec},f} - E_{\text{HF-elec},f}\big) \\
+  &= E_{\text{elec},f} - E_{\text{HF-elec},f}
+\end{align}
+
+$E_{\text{core},f}$ 完全抵消，只剩下电子关联修正：
+
+\begin{equation}
+  \boxed{\;\Delta E_{\text{corr},f} = E_f - E_{\text{MF},f} = E_{\text{elec},f} - E_{\text{HF-elec},f}\;}
+\end{equation}
+
+\section{为什么 $\Delta E_{\text{corr},f}$ 局域且无双计}
+
+\subsection{局域性}
+
+$\Delta E_{\text{corr},f}$ 只涉及碎片 $f$ 的嵌入空间（碎片轨道 + 浴轨道）内的电子关联。电子关联主要是局域的——电子主要和近邻电子纠缠。跨碎片关联（色散、电荷转移）在标准 DMET 中被丢失，但\textbf{不是双计问题}——它是系统性遗漏，属于 $\varepsilon_{\text{cross}}$ 误差源。
+
+\subsection{无双计的原因}
+
+朴素求和 $\sum_f E_f$ 会偏大，因为相邻碎片的重叠浴轨道的 HF 贡献被重复计算。标准重构通过减去 $E_{\text{MF},f}$ 消除了这个重复：
+
+\begin{itemize}
+  \item $\sum_f E_{\text{MF},f}$ 包含了重叠浴的\textbf{平均场版本}贡献
+  \item $\sum_f E_f$ 包含了重叠浴的\textbf{精确版本}贡献
+  \item 取差 $\sum_f (E_f - E_{\text{MF},f})$：重叠部分的平均场被精确扣除，只替换为关联修正
+\end{itemize}
+
+\textbf{核能 $E_{NN}$ 只出现在 $E_{\text{MF}}$ 中一次}——核位置在 DMET 碎片化中固定，$E_f$ 和 $E_{\text{MF},f}$ 都只是电子能量，差值不含核能，无需按碎片分解。
+
+
+\section{验证：全 HF 时 $E_{\text{total}} = E_{\text{MF}}$}
+
+若所有碎片都用 HF 求解器，则 $E_f = E_{\text{MF},f}$（同一空间同一方法），每个差值为零：
+
+\begin{equation}
+  E_{\text{total}} = E_{\text{MF}} + \sum_f \underbrace{(E_f - E_{\text{MF},f})}_{=\,0} = E_{\text{MF}} \quad \checkmark
+\end{equation}
+
+\section{计算重构后的总能量}
+
+\begin{equation}
+  E_{\text{total}} = E_{\text{MF}} + \sum_f \big(E_f - E_{\text{MF},f}\big) = E_{\text{MF}} + \big(E_O - E_{\text{MF},O}\big) + \big(E_{H_2} - E_{\text{MF},H_2}\big)
+\end{equation}
+
+\begin{align}
+  \Delta E_{\text{corr},O} &= E_O - E_{\text{MF},O} = (-75.010) - (-74.980) = -0.030 \text{ Ha} \\
+  \Delta E_{\text{corr},H_2} &= E_{H_2} - E_{\text{MF},H_2} = (-75.005) - (-74.983) = -0.022 \text{ Ha}
+\end{align}
+
+\begin{align}
+  E_{\text{total}} &= -74.963 + (-0.030) + (-0.022) \\
+  &= -74.963 - 0.052 \\
+  &= \boxed{-75.015 \text{ Ha}}
+\end{align}
+
+\end{document}
