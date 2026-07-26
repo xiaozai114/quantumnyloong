@@ -1,5 +1,9 @@
 miniconda.sh
 
+# Problem 1 第六问电路图 —— 仅本地保留用于编译，不入库（PDF 已内嵌图像）
+Problem1/figs/q6_*.png
+Problem1_Summary/figs/q6_*.png
+
 # LaTeX auxiliary files
 *.aux
 *.log
