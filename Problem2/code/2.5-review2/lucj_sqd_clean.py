@@ -36,7 +36,7 @@ from pyscf.fci import cistring, direct_spin1
 
 tc.set_backend("numpy")
 tc.set_dtype("complex128")
-np.random.seed(1234)
+np.random.seed(2026)
 
 # --- problem settings ---
 BOND = 1.55           # Angstrom
