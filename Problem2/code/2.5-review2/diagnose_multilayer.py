@@ -26,7 +26,7 @@ import problem_2_5_lucj_sqd as P
 
 tc.set_backend("numpy")
 tc.set_dtype("complex128")
-np.random.seed(2026)
+np.random.seed(1234)
 
 BOND = 1.55
 NCAS = 4
