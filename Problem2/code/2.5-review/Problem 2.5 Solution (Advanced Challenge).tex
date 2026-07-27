@@ -39,6 +39,8 @@
   \item[\textbf{(c)}]（Advanced Challenge）定量研究 LUCJ 态的\textbf{纠缠熵} $S_{\mathrm{ent}}$
   与 SQD 所需\textbf{样本数} $S$ 之间的关系：画图展示二者随 $\lambda$ 的变化，并说明
   是否存在 $\log S\propto S_{\mathrm{ent}}$ 的标度律。
+  \item[\textbf{(d)}]（补充研究）评估\textbf{多层双因子化（DF）LUCJ} 能否从结构上消除单层最近邻截断的
+  局域平台；刻画测量次数 $S$ 与层数 $L$ 对 SQD 能量 $E_{\mathrm{SQD}}$ 的关系。
 \end{description}
 
 %==============================================================================
@@ -234,6 +236,120 @@ $S\sim R\ln R$，即 $\log_{10}S\sim S_{\mathrm{ent}}$，理论斜率 $1/\ln10\a
   LUCJ 因质量集中于单双激发而偏离该律。
   \item (a) 的“贴 HF”现象正是 $S_{\mathrm{req}}$ 在小幅 $\lambda$ 下暴涨的覆盖阈值体现。
 \end{enumerate}
+  \end{keybox}
+
+%==============================================================================
+\section{(d) 补充：多层双因子化 LUCJ 超越局域截断平台}
+%==============================================================================
+上述 (a)(b)(c) 在\textbf{单层最近邻截断} LUCJ 上展开。其结构性缺陷是：无穷样本 SQD 仍停在
+距 FCI $1.587\mHa$ 的\textbf{局域截断平台}（见 (a) 表），因为最近邻截断丢弃了非相邻双激发
+$0\!\to\!2,0\!\to\!3$，三个虚拟轨道的成对双激发无法全部进入支撑。本补充研究验证另一思路——
+\textbf{多层双因子化（DF）LUCJ}：
+\[
+  |\Psi(\lambda)\rangle = \prod_{k=1}^{L} U_k\, e^{iJ_k}\, U_k^\dagger\,|\HF\rangle,
+\]
+它从结构上补全成对双激发支撑，在所有 $\lambda>0$ 下无穷样本 SQD 精确命中 FCI。
+
+\subsection*{理论：双因子化与“振幅入相位”技巧}
+取活性窗口 CCSD 切片 $T[a,b]=t_2[0,0,a,b]$，对称化后特征值分解
+$T[a,b]=\sum_k g_k\, v_k v_k^{T}$。每一层 $k$：Givens 网络 $U_k$ 把占据轨道 $0$ 旋转到集体虚拟模
+$v_k$；转角固定 $\theta=\pi/4$；Jastrow 相位权重取 $\phi_k=g_k\lambda$。于是 Jastrow 在 HF 数算符
+本征态上贡献的成对双激发振幅 $\sim\sin^2\theta\cdot\phi_k$，大小 $\propto\lambda$（而\text{非}
+$\propto\lambda^2$ 的 $\theta$），故成对双激发概率 $p_{\text{paired}}\propto\lambda^2$。
+
+SQD 在采样到的行列式子空间对角化，变分原理保证 $E_{\text{SQD}}\ge E_{\text{FCI}}$，且
+\textbf{只需正确行列式“出现”于样本}（支撑 $>$ 保真度）即可——子空间对角化会重优化所有振幅。
+因此 $\theta=\pi/4$ 的“差”态无妨，关键是被丢弃的非相邻成对双激发现获非零概率进入支撑。
+
+\subsection*{实验一：$\lambda$ 扫描与层数消融}
+\begin{figure}[h]
+\centering\includegraphics[width=\linewidth]{multilayer_energy_vs_lambda.png}
+\caption{多层 DF-LUCJ + SQD 能量 vs $\lambda$。蓝线（$S\to\infty$）：三层在所有 $\lambda>0$ 精确命中
+FCI（误差 $<10^{-8}\Ha$），与单层 local LUCJ 的 $1.587\mHa$ 平台对比。绿/橙带：$S=10^5/10^3$ 采样
+SQD 的均值 $\pm$ 标准差（每点 20 次重复）。}
+\end{figure}
+\begin{figure}[h]
+\centering\includegraphics[width=\linewidth]{multilayer_scaling.png}
+\caption{左：$p_{\text{paired}}(\lambda)$ 标度，多层 log-log 斜率 $2.00$ vs 单层 local $4.00$；
+右：临界样本数 $S_{\text{req}}(\lambda)$（coupon-collector, 95\%）。}
+\end{figure}
+\begin{table}[h]
+\centering\small
+\begin{tabular}{lcc}\toprule
+方法 & $p_{\text{paired}}$ log-log 斜率 & $S_{\text{req}}$@$\lambda=1$\\\midrule
+单层 local LUCJ & $4.00$ & $26560$\\
+多层 DF-LUCJ ($L=3$) & $2.00$ & $18302$\\\bottomrule
+\end{tabular}
+\caption{多层 ansatz 把 $p_{\text{paired}}$ 从小 $\lambda$ 下的“$\propto\lambda^4$”提升到
+“$\propto\lambda^2$”，临界样本数相应下降。}
+\end{table}
+
+\subsection*{实验二：测量次数 $S$ 对 $E_{\text{SQD}}$ 的关系}
+固定 $\lambda$，扫描 $S\in[200,10^5]$，每点 40 次独立重复。两个独立误差机制：
+\begin{itemize}[leftmargin=*]
+ \item \textbf{支撑缺失}（$S\ll S_{\text{req}}$）：子空间不完整，误差停在 HF 平台 $1.829\mHa$；
+ 是否采全关键行列式是伯努利事件，命中率随 $S$ 指数上升。
+ \item \textbf{采样统计噪声}（$S\gg S_{\text{req}}$）：振幅由经验频率估计，相对误差 $\sim1/\sqrt{S}$，
+ 能量误差 $\sim S^{-1/2}$。
+\end{itemize}
+\begin{figure}[h]
+\centering\includegraphics[width=\linewidth]{shots_scaling.png}
+\caption{左上：误差中位数 $+$ 10/90 分位带 vs $S$（对数），虚线标 $S_{\text{req}}$；右上：命中 FCI
+概率；左下：误差分布（双峰，$\lambda=1$）；右下：统计尾 $\propto S^{-1/2}$。}
+\end{figure}
+\begin{table}[h]
+\centering\small
+\begin{tabular}{c cc}\toprule
+$S$ & $\lambda=1.0$ ($S_{\text{req}}=18302$) & $\lambda=0.3$ ($S_{\text{req}}=203325$)\\\midrule
+200    & 1.829 (0 paired) & 1.829\\
+5000   & 0.988 (1 paired) & 1.829\\
+20000  & 0.185 (2 paired) & 1.829\\
+50000  & 0.053 (3 paired, hit) & 1.829\\
+100000 & 0.000 (hit) & 0.988\\\bottomrule
+\end{tabular}
+\caption{误差单位 mHa；命中指 $|E-E_{\text{FCI}}|<1\mHa$。平台高度恰为纯 HF 误差 $1.829\mHa$
+（支撑里无成对双激发）。误差随“采到的成对双激发个数”逐次下台阶，而非一次跳到 0。}
+\end{table}
+
+\subsection*{实验三：层数的作用}
+\begin{figure}[h]
+\centering\includegraphics[width=\linewidth]{layers_energy_vs_lambda.png}
+\caption{左中右：$L=1,2,3$ 的 $E_{\text{SQD}}$ vs $\lambda$。含 $S\to\infty$（精确）与
+$S=10^3,10^5$ 平均 $\pm$ 标准差带（每点 15 次重复）。层数越多，给定 $S$ 下平均能量越接近 FCI、带越窄。}
+\end{figure}
+\begin{figure}[h]
+\centering\includegraphics[width=\linewidth]{layers_shots_scaling.png}
+\caption{固定 $\lambda=1.0,0.5$，误差 vs $S$（对数），对比 $L=1,2,3$，每条标各自 $S_{\text{req}}$；
+层数越多曲线越早陡降。}
+\end{figure}
+\begin{figure}[h]
+\centering\includegraphics[width=0.85\linewidth]{layers_sample_requirement.png}
+\caption{$p_{\text{paired}}$ 与 $S_{\text{req}}$ 随层数 $L$ 的变化（边际收益递减）。}
+\end{figure}
+\begin{table}[h]
+\centering\small
+\begin{tabular}{cccc}\toprule
+固定 $\lambda$ & $L=1$ & $L=2$ & $L=3$\\\midrule
+1.0 & 41478 & 20366 & 18302\\
+0.5 & 165905 & 81455 & 73199\\\bottomrule
+\end{tabular}
+\caption{各层数的临界样本数 $S_{\text{req}}$（95\% 置信）。层数越多收敛到 FCI 所需 $S$ 越少；
+但 $L=2\to3$ 增益极小（主导 DF 层贡献最大，后续层 $g_k$ 快速衰减）。}
+\end{table}
+
+\begin{keybox}
+\textbf{多层 DF-LUCJ 结论：}
+\begin{enumerate}[leftmargin=*,topsep=2pt,itemsep=1pt]
+ \item 多层 ansatz 从结构上补全成对双激发支撑，无穷样本下精确命中 FCI，消除单层 local LUCJ 的
+ $1.587\mHa$ 截断平台。
+ \item 测量次数与 $E_{\text{SQD}}$ 呈三段式：平台（$S\ll S_{\text{req}}$）$\to$ 陡降（命中率
+ sigmoid）$\to$ $S^{-1/2}$ 统计尾；存在临界 $S_{\text{req}}\sim3/p_{\text{paired}}$，低于它增大
+ $S$ 只提高随机命中概率。
+ \item 层数作用 = 提高 $p_{\text{paired}}$、降低 $S_{\text{req}}$；$L=2$ 是甜点，$L=3$ 收益饱和。
+ \item 与题目基准对接：$\lambda=0.05,S=1000$ 下无论单层/多层均远未触及 $S_{\text{req}}$，故
+ “LUCJ-SQD 与 HF-SQD 无可见差异”是真实物理；只有放大 $\lambda$（$\lambda\gtrsim0.3$）并配合足够
+ 大 $S$ 才超越 HF。
+\end{enumerate}
 \end{keybox}
 
 %==============================================================================
@@ -251,10 +367,16 @@ $S\sim R\ln R$，即 $\log_{10}S\sim S_{\mathrm{ent}}$，理论斜率 $1/\ln10\a
   相关行列式主导：$S_{\mathrm{req}}\approx3/p_d$ 随 $\lambda$ 单调下降（$\sim\!7\!\times\!10^5\to283$），
   朴素 $\log S\propto S_{\mathrm{ent}}$ 在 LUCJ 下不成立；该指数律仅在质量均匀铺开的受控族中成立
   （拟合斜率 $0.508\approx1/\ln10$）。
+  \item （补充）多层 DF-LUCJ 在所有 $\lambda>0$ 无穷样本下精确命中 FCI，消除 $1.587\mHa$ 截断平台；
+  $E_{\mathrm{SQD}}(S)$ 呈“平台 $\to$ 陡降 $\to$ $S^{-1/2}$ 尾”三段式，临界 $S_{\mathrm{req}}\sim3/p_{\mathrm{paired}}$；
+  层数越多 $S_{\mathrm{req}}$ 越小（$L=2$ 为甜点）。$\lambda=0.05,S=1000$ 基准下仍远未触及
+  $S_{\mathrm{req}}$，故与 HF 无差异是真实物理。
 \end{enumerate}
 
 \vspace{4pt}
-{\small 实现脚本：\texttt{experiment.py}（位于 \texttt{code/2.5-review/}，Python~3.12,
-TF~2.x, TC~0.12, PySCF~2.14）；全部数值与图片由该脚本一次性生成。}
+{\small 实现脚本（位于 \texttt{code/2.5-review/}）：主流程 \texttt{experiment.py}（单层 local LUCJ，
+Python~3.12, TF~2.x, TC~0.12, PySCF~2.14）；多层 DF-LUCJ 研究 \texttt{experiment2.py}（$\lambda$ 扫描与
+层数消融）、\texttt{experiment3\_shots.py}（测量次数 $S$ 扫描）、\texttt{experiment4\_layers.py}
+（层数作用），均用 \texttt{tc} 环境（NumPy~1.26）运行。全部数值与图片由这些脚本生成。}
 
 \end{document}

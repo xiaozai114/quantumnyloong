@@ -478,3 +478,192 @@ def sqd_energy(bits, data):
         nvalid=n_valid,
         subspace_dim=m,
     )
+
+
+# ============================================================================
+# 6. Multi-layer (double-factorized) LUCJ
+#    Ported / adapted from the cross-worker's study in code/2.5-review2
+#    (problem_2_5_lucj_sqd.py), re-expressed in THIS module's conventions
+#    (interleaved qubits q = 2p + s, MSB-first indexing, TF backend).
+#
+#    Ansatz:   |Psi> = ( prod_{k=1..L} U_k e^{i J_k} U_k^dagger ) |HF>
+#
+#    Layers come from the eigendecomposition ("double factorization") of the
+#    paired-double channel of CCSD t2:
+#        T[a,b] = t2[0,0,a,b]  (symmetric, nvir x nvir)
+#        T = sum_k g_k v_k v_k^T
+#    Layer k: U_k rotates the occupied orbital 0 into the collective virtual
+#    mode w_k = sum_a v_k[a] |vir a> by a FIXED O(1) angle theta; the diagonal
+#    Jastrow phase phi_k = g_k * lambda is applied between the alpha- and
+#    beta-occupied qubits in the rotated frame.  First-order expansion gives a
+#    paired-double AMPLITUDE ~ sin^2(theta) * phi_k, i.e. linear in g_k*lambda
+#    (probability ~ (g_k lambda)^2 / 4 for theta = pi/4).
+#
+#    Why this is legitimate for SQD even though theta = pi/4 makes the state a
+#    poor *wavefunction*: SQD only needs the right determinants to APPEAR in
+#    the samples -- amplitudes are re-optimised by the subspace
+#    diagonalisation.  "Support over fidelity."
+# ============================================================================
+def ccsd_t2_active(data):
+    """CCSD confined EXACTLY to the active window: freeze the core orbital(s)
+    AND every virtual above the active space, so t2 has shape
+    (nocc_act, nocc_act, nvir_act, nvir_act) and maps 1:1 onto the nact
+    spatial orbitals (no dangling external virtuals)."""
+    mf = data["mf"]
+    nmo = mf.mo_coeff.shape[1]
+    ncore, nact = data["ncore"], data["nact"]
+    frozen = list(range(ncore)) + list(range(ncore + nact, nmo))
+    mycc = cc.CCSD(mf, frozen=frozen).run()
+    e_corr = float(mycc.e_corr) if mycc.e_corr is not None else 0.0
+    return np.asarray(mycc.t1), np.asarray(mycc.t2), e_corr
+
+
+def df_layers(data, t2, tol=1e-8):
+    """Double-factorize the paired-double channel of t2 into layers.
+
+    Returns a list of (g_k, kappa_k), ordered by decreasing |g_k|, where
+    kappa_k is the (nact x nact) antisymmetric generator rotating occupied
+    orbital 0 into the k-th collective virtual direction v_k (unit norm).
+    The physical rotation angle is supplied later (theta_fixed)."""
+    nocc = data["nelec_act"] // 2
+    nvir = data["nact"] - nocc
+    tmat = np.array(t2[0, 0, :nvir, :nvir])
+    tmat = 0.5 * (tmat + tmat.T)
+    g, V = np.linalg.eigh(tmat)
+    order = np.argsort(-np.abs(g))
+    layers = []
+    for k in order:
+        if abs(g[k]) < tol:
+            continue
+        vk = V[:, k]
+        kappa = np.zeros((data["nact"], data["nact"]))
+        for a in range(nvir):
+            kappa[0, nocc + a] = vk[a]
+            kappa[nocc + a, 0] = -vk[a]
+        layers.append((float(g[k]), kappa))
+    return layers
+
+
+def givens_network_from_kappa(kappa):
+    """Decompose the orthogonal rotation Q = exp(kappa) into a sequence of
+    adjacent-row Givens rotations (QR-style elimination).  Returns a list of
+    (p, q=p+1, theta): applying these left-to-right on the orbital register
+    builds Q.  All rotations act on ADJACENT spatial orbitals, so the network
+    is compatible with the 'local' nearest-neighbour connectivity of LUCJ."""
+    from scipy.linalg import expm
+    qmat = expm(kappa)
+    n = qmat.shape[0]
+    m = qmat.copy()
+    rots = []
+    for col in range(n):
+        for row in range(n - 1, col, -1):
+            a, b = m[row - 1, col], m[row, col]
+            if abs(b) < 1e-14:
+                continue
+            th = np.arctan2(b, a)
+            c_, s_ = np.cos(th), np.sin(th)
+            rmat = np.eye(n)
+            rmat[row - 1, row - 1] = c_
+            rmat[row - 1, row] = s_
+            rmat[row, row - 1] = -s_
+            rmat[row, row] = c_
+            m = rmat @ m
+            rots.append((row - 1, row, th))
+    # Left-to-right the rotations reduce Q to (signed) identity; to BUILD Q
+    # apply them reversed with negated angles.
+    return [(p, q, -th) for (p, q, th) in reversed(rots)]
+
+
+def _jastrow_pair(c, a, b, phi):
+    """e^{i phi n_a n_b} (up to a global phase), same primitive/sign
+    conventions as `add_diagonal_coulomb`."""
+    c.rz(a, theta=-phi / 2.0)
+    c.rz(b, theta=-phi / 2.0)
+    c.cnot(a, b)
+    c.rz(b, theta=phi / 2.0)
+    c.cnot(a, b)
+    return c
+
+
+def build_multilayer_circuit(data, layers, lam, theta_fixed=np.pi / 4.0,
+                             n_layers=None):
+    """DF-LUCJ:  |Psi> = prod_k U_k e^{i J_k} U_k^dagger |HF>.
+
+    Amplitude-in-phase scaling (the crux, after the cross-worker's finding):
+    theta is FIXED at an O(1) value; the CCSD physics and the lambda knob live
+    entirely in the Jastrow phase phi_k = g_k * lambda.  Naively setting
+    theta_k = sqrt(|g_k| lam) squares the tiny t2 weight and the paired
+    doubles never become samplable.
+
+    n_layers : use only the first n layers (ablation studies); None = all."""
+    nq = 2 * data["nact"]
+    c = tc.Circuit(nq)
+    add_hf_state(c, data)
+    use = layers if n_layers is None else layers[:n_layers]
+    for (g, kappa) in use:
+        phi = g * lam
+        net = givens_network_from_kappa(theta_fixed * kappa)
+        # U_k^dagger on both spin sectors
+        for (p, q, th) in reversed(net):
+            for s in (0, 1):
+                _givens(c, qubit_index(p, s), qubit_index(q, s), -th)
+        # diagonal-Coulomb phase between alpha- and beta-occupied qubits
+        # (qubits 0 and 1 in the interleaved layout -- nearest neighbours)
+        _jastrow_pair(c, qubit_index(0, 0), qubit_index(0, 1), phi)
+        # U_k
+        for (p, q, th) in net:
+            for s in (0, 1):
+                _givens(c, qubit_index(p, s), qubit_index(q, s), th)
+    return c
+
+
+def det_state_index(data, a_occ, b_occ):
+    """Flat state-vector index of the determinant with the given alpha/beta
+    spatial occupations (interleaved layout, qubit 0 = MSB)."""
+    nq = 2 * data["nact"]
+    bits = [0] * nq
+    for p in a_occ:
+        bits[qubit_index(p, 0)] = 1
+    for p in b_occ:
+        bits[qubit_index(p, 1)] = 1
+    idx = 0
+    for b in bits:
+        idx = (idx << 1) | b
+    return idx
+
+
+def paired_double_probability(data, psi):
+    """(p_hf, p_paired): probability on the HF determinant and the TOTAL
+    probability on the paired doubles |a_alpha a_beta> (both electrons in the
+    same virtual a)."""
+    p = np.abs(np.asarray(psi)) ** 2
+    nocc = data["nelec_act"] // 2
+    p_hf = float(p[det_state_index(data, tuple(range(nocc)),
+                                   tuple(range(nocc)))])
+    p_paired = 0.0
+    for a in range(nocc, data["nact"]):
+        p_paired += float(p[det_state_index(data, (a,), (a,))])
+    return p_hf, p_paired
+
+
+def support_bits(psi, nq, thresh=1e-12):
+    """Bit rows (shots x nq layout) of every computational-basis state with
+    probability above `thresh` -- the 'infinite-sample' determinant pool."""
+    p = np.abs(np.asarray(psi)) ** 2
+    idxs = np.where(p > thresh)[0]
+    shifts = (nq - 1 - np.arange(nq))[None, :]
+    return ((idxs[:, None] >> shifts) & 1).astype(int)
+
+
+def dets_to_bits(data, dets):
+    """Convert a list of ((a_occ),(b_occ)) determinants into a bit-row array
+    consumable by `sqd_energy` (for hand-built subspaces, e.g. the
+    variational floor {HF} + all paired doubles)."""
+    nq = 2 * data["nact"]
+    rows = np.zeros((len(dets), nq), dtype=int)
+    for r, (aocc, bocc) in enumerate(dets):
+        for p in aocc:
+            rows[r, qubit_index(p, 0)] = 1
+        for p in bocc:
+            rows[r, qubit_index(p, 1)] = 1
+    return rows
