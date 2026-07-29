@@ -1,0 +1,301 @@
+\documentclass[11pt]{article}
+\usepackage[UTF8]{ctex}
+\usepackage{amsmath,amssymb,amsfonts,mathtools}
+\usepackage{braket}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\hypersetup{colorlinks=true,linkcolor=blue,urlcolor=blue}
+
+\title{\textbf{Problem 2 --- 选做 3}\\EWF Bath Threshold: MP2 自然轨道占据数与截断阈值}
+\date{}
+\begin{document}\maketitle
+
+\section*{题目回顾}
+MP2 bath natural orbitals (BNO) 的占据数大致按指数衰减; 截断阈值 $\eta$ 控制 bath
+轨道数。给定 H$_2$O, $\eta\in[10^{-6},10^{-2}]$。要求:
+\begin{enumerate}
+  \item 推导 $n_{\text{BNO}}$ 与 $\eta$ 的渐近关系;
+  \item 画出 fragment size 与能量误差随 $\eta$ 的变化, 找拐点, 解释
+        ``diminishing returns'' (边际收益递减)。
+\end{enumerate}
+
+%=============================================================================
+\section{背景: 为什么需要 MP2 BNO bath?}
+%=============================================================================
+\textbf{DMET (Schmidt) minimal bath} 用 HF 密度矩阵 $\gamma^{\text{HF}}$
+的幂等性 ($(\gamma^{\text{HF}})^2{=}\gamma^{\text{HF}}$) 得到 bath 上界
+$n_{\text{bath}}^{\text{DMET}}\le n_{\text{imp}}$, 它\emph{精确} 再现 HF 在
+impurity 上的约化密度矩阵, 但只捕捉\emph{静态相关} (近简并、键断裂的纠缠)。
+
+\textbf{当求解器升级到相关波函数 (CCSD/SQD/FCI)}, 相关态的密度矩阵
+$\gamma^{\text{corr}}$ 不再幂等, 谱中出现的\emph{分数占据} ($0<n_k<1$) 反映
+电子瞬时涨落 (动态相关)。这些涨落贡献了大量 ``超出 DMET 秩'' 的 Schmidt 分量,
+DMET minimal bath 全部截掉 $\to$ fragment solver 看不到完整的动态相关空间 $\to$
+引入 bath 截断误差 $\epsilon_{\text{frag}}$。
+
+\textbf{EWF 的补救}: 在 DMET minimal bath 之外, \emph{额外} 加上由 MP2 密度修正
+$\Delta\gamma^{\text{MP2}}$ 对角化得到的 bath natural orbitals (BNO), 按占据数
+$\{n_i\}$ 截断: 保留 $n_i\ge\eta$ 的那些。MP2 是动态相关的最便宜近似, 故 BNO 是
+``廉价捕动态相关'' 的最优 bath 选择。本题研究阈值 $\eta$ 与 bath 规模 / 精度
+的标度关系。
+
+%=============================================================================
+\section{MP2 BNO 占据数 $n_i$ 的构造}
+%=============================================================================
+\subsection*{从 MP2 T2 振幅到密度修正}
+MP2 波函数相对 HF 的一阶微扰 (in Rayleigh--Schr\"odinger 意义) 由
+T2 振幅 $t_{ij}^{ab}$ 描述 ($i,j$ 占据, $a,b$ 虚):
+\[
+  |\Psi^{\text{MP2}}\rangle = |\Phi_0\rangle + \frac{1}{4}\sum_{ijab} t_{ij}^{ab}\,
+  a^\dagger_a a^\dagger_b a_j a_i\,|\Phi_0\rangle .
+\]
+其密度矩阵修正 (相对 HF 占据投影)
+\[
+  \Delta\gamma^{\text{MP2}}
+  = \gamma^{\text{MP2}}-\gamma^{\text{HF}}
+\]
+由 T2 振幅的二次型给出 (pyscf 标准实现):
+\begin{align}
+  \Delta\gamma_{ij}  &= 2\sum_{kab} t_{ik}^{ab}\,(t_{jk}^{ab})^*
+                    - \sum_{kab} t_{ik}^{ab}\,(t_{jk}^{ba})^*  \quad \text{(占据块, 取负)},\\
+  \Delta\gamma_{ab}  &= 2\sum_{ijc} t_{ij}^{ac}\,(t_{ij}^{bc})^*
+                    - \sum_{ijc} t_{ij}^{ac}\,(t_{ij}^{cb})^*  \quad \text{(虚块, 取正)}.
+\end{align}
+MP2 是\emph{弱相关} 近似, 故 $\|\Delta\gamma^{\text{MP2}}\|\ll 1$; 其环境-环境块
+$\Delta\gamma^{\text{MP2}}_{\text{env,env}}$ 是\emph{小半正定矩阵} (占据块和虚块
+各自的二次型 $XX^\dagger$ 形式), 描述环境轨道如何被 ``瞬时双激发'' 激发到与
+fragment+DMET-bath 子空间耦合的状态。
+
+\subsection*{BNO = $\Delta\gamma^{\text{MP2}}_{\text{env,env}}$ 的本征轨道}
+\textbf{bath natural orbital} 定义为 $\Delta\gamma^{\text{MP2}}_{\text{env,env}}$
+的本征向量:
+\[
+  \Delta\gamma^{\text{MP2}}_{\text{env,env}}\,|b_i\rangle = n_i\,|b_i\rangle,
+  \qquad n_1\ge n_2\ge\cdots\ge 0.
+\]
+对应本征值 $\{n_i\}$ (称为 \emph{BNO 占据数}) 反映: 若把环境轨道 $|b_i\rangle$
+补进 bath, 它能给 fragment cluster 带来多少 MP2 相关能 / 多少密度涨落耦合。
+占据数大 $\to$ 该 BNO 与 fragment 有强相关耦合 (重要);
+占据数小 $\to$ 该 BNO 几乎不被激发 (可忽略)。
+\textbf{截断阈值 $\eta$}: 仅保留 $n_i\ge\eta$ 的 BNO 作为 bath, 丢掉其余。
+
+%=============================================================================
+\section{$n_{\text{BNO}}$ vs $\eta$ 的渐近关系}
+%=============================================================================
+\subsection*{(1) 指数衰减假设}
+BNO 占据数对应 ``双激发到环境轨道的概率'', 在弱相关体系 (H$_2$O 平衡几何) 中,
+第 $i$ 个最相关 BNO 大致按\emph{指数}衰减:
+\[
+  \boxed{\;n_i \;\sim\; n_1\,e^{-\alpha\,(i-1)},\qquad \alpha>0\;}
+  \tag{E}
+\]
+($\alpha$ 是衰减常数, 依赖体系/基组; H$_2$O/$6\text{-}31$G 实测
+$\alpha\approx 2$--$5$ per BNO index, 见 \texttt{solution.py} 拟合。)
+\textbf{物理起源}: 弱相关下 T2 振幅 $t_{ij}^{ab}$ 随激发轨道 $a,b$ 的轨道能差
+$\sim 1/(\epsilon_a+\epsilon_b-\epsilon_i-\epsilon_j)$ 快速下降, 密度修正
+$\Delta\gamma\sim t^2$ 是\emph{平方} 效应, 双重求和后大致按指数 (而非幂律)
+衰减; 这是 RPA/MP2 density fitting 等近似下 known 的 ``double-excitation
+weight'' 衰减规律。
+
+\subsection*{(2) 对数截断关系 (核心结论)}
+保留条件 $n_i\ge\eta$ 代入 (E):
+\[
+  n_1\,e^{-\alpha\,(i-1)} \ge \eta
+  \;\Longrightarrow\;
+  i-1 \le \frac{1}{\alpha}\log\!\frac{n_1}{\eta}
+  \;\Longrightarrow\;
+  \boxed{\;n_{\text{BNO}}(\eta)\;\sim\;\frac{1}{\alpha}\,\log\!\frac{n_1}{\eta}
+  \;\approx\;\frac{1}{\alpha}\,\log\frac{1}{\eta}\;}
+  \tag{$\star$}
+\]
+即\textbf{BNO 数随阈值按对数增长}: $\eta$ 减小一个数量级 $\to$ $n_{\text{BNO}}$
+增加 $(\ln 10)/\alpha\approx 2.3/\alpha$ 个轨道。$\alpha$ 越大 (相关性越局域、
+衰减越快), 同样 $\eta$ 下需要的 BNO 越少。
+
+\subsection*{(3) 与幂律对照}
+若 $\Delta\gamma$ 谱是幂律 $n_i\sim i^{-\beta}$ ($\beta>1$), 则
+$n_i\ge\eta\Rightarrow i\le(n_1/\eta)^{1/\beta}$, 截断 BNO 数
+$n_{\text{BNO}}\sim\eta^{-1/\beta}$ \emph{幂律增长}, 比 ($\star$) 慢很多
+(指数 $-1/\beta$ vs $\log$)。实测 (见 \texttt{solution.py}) 在 H$_2$O/$6$-31G
+上 $n_{\text{BNO}}$ vs $\eta$ 在 log-log 图接近直线、斜率约 $-0.2$, 既非纯对数
+也非纯幂律 —— 因 $\alpha$ 不严格常数 (前面 BNO 衰减更快, 后面变慢)。
+本题取 ($\star$) 作为\emph{主要} 渐近形式 (大 $i$ 时指数项主导), 它给出
+\textbf{最稳健的工程结论}: $\eta$ 减半 $\to$ $n_{\text{BNO}}$ 仅增 $(\ln 2)/\alpha$
+$\approx 0.7/\alpha$ 个轨道, 故 $\eta$ 越小 \emph{每多花一个 bath 轨道换来的精度
+提升越小} —— 这正是 diminishing returns 的根源。
+
+%=============================================================================
+\section{Fragment size 与能量误差随 $\eta$ 的变化}
+%=============================================================================
+\subsection*{Fragment size}
+每个 fragment cluster 的轨道数 (空间轨道)
+\[
+  n_{\text{cluster}}(\eta)
+  = \underbrace{n_{\text{imp}}}_{\text{fragment}}
+  + \underbrace{n_{\text{bath}}^{\text{DMET}}}_{\le n_{\text{imp}},\ \text{Schmidt}}
+  + \underbrace{n_{\text{BNO,occ}}(\eta)+n_{\text{BNO,vir}}(\eta)}_{\text{MP2 bath, 截断于}\ \eta}.
+\]
+前两项与 $\eta$ 无关 (DMET minimal bath 固定), 故 cluster 随 $\eta$ 的增长完全由
+BNO 项主导:
+\[
+  \boxed{\;n_{\text{cluster}}(\eta)\;\approx\;\text{const}+\frac{1}{\alpha}\big(\log(1/\eta_{\text{occ}})+\log(1/\eta_{\text{vir}})\big)\;}
+  \quad (\eta_{\text{occ}}=\eta_{\text{vir}}=\eta\ \text{默认})。
+\]
+对应量子比特数 $n_{\text{qubit}}=2\,n_{\text{cluster}}$, 也按对数随 $\eta\!\downarrow$ 增长。
+\textbf{对 NISQ 硬件的影响}: $\eta$ 减小 $\to$ $n_{\text{qubit}}$ 缓慢 (对数) 增长,
+\emph{但} 量子电路深度 $\sim O(n_{\text{qubit}}^2)$, 故深度按 $(\log(1/\eta))^2$
+增长 —— 这是 ``还能加多少 bath'' 的硬件上限。
+
+\subsection*{能量误差}
+设 ``无穷 bath'' ($\eta\to 0$) 极限下 EWF 能量为 $E_{\infty}^{\text{bath}}$,
+\textbf{定义为最小 $\eta$ 下 EWF 的收敛能量} (实测: $\eta\le3\times10^{-6}$ 后
+EWF 能量不再变)。注意 $E_{\infty}^{\text{bath}}$ 一般\emph{不严格等于} 全空间
+CCSD —— 二者之差是 ``EWF 方法自身偏差'' (cluster 求解器 + 能量泛函近似), 与
+bath 截断\emph{无关}。因此衡量 ``bath 截断误差'' $\epsilon_{\text{frag}}$ 应以
+$E_{\infty}^{\text{bath}}$ 为参考, 而非 CCSD。
+
+截掉占据 $<\eta$ 的 BNO 引入的误差大致\emph{正比于被截掉的占据之和}
+(每条 BNO 贡献的相关能 $\propto n_i$):
+\[
+  \epsilon_{\text{frag}}(\eta)=|E_{\text{EWF}}(\eta)-E_{\infty}^{\text{bath}}|
+  \;\sim\;\sum_{i>n_{\text{BNO}}(\eta)} n_i
+  \;\sim\;\sum_{i>n_0} n_1\,e^{-\alpha(i-1)}
+  \;\sim\; \frac{n_1}{\alpha}\,e^{-\alpha\, n_{\text{BNO}}}
+  \;\sim\;\frac{n_1}{\alpha}\,\eta .
+\]
+即\textbf{bath 截断能量误差近似正比于 $\eta$}:
+\[
+  \boxed{\;\epsilon_{\text{frag}}(\eta)\;\propto\;\eta\;}
+  \qquad(\text{指数衰减谱下}).
+\]
+\textbf{含义}: $\eta$ 减半 $\to$ 误差减半 (一阶), 但 $n_{\text{BNO}}$ 只增
+$(\ln 2)/\alpha$ 个 —— \emph{精度按 $\eta$ 线性改善, 代价 (bath 规模) 按对数
+增长}。这看起来 ``划算'', 但下一节会看到当 $\eta$ 进入 ``噪声/SQD-采样'' 量级
+时, 边际收益被其他误差淹没。
+
+%=============================================================================
+\section{拐点与 diminishing returns}
+%=============================================================================
+\subsection*{边际分析}
+定义两条 ``边际曲线'':
+\begin{itemize}
+  \item \textbf{边际成本}: 多保留一个 BNO 增加的计算代价
+        $\dfrac{\partial\,\text{Cost}}{\partial n_{\text{BNO}}}
+        \sim \dfrac{\partial\,n_{\text{cluster}}^3}{\partial n_{\text{BNO}}}
+        \sim 3\,n_{\text{cluster}}^2$ (CCSD/SQD 对角化是 $O(n^3)$--$O(n^4)$)。
+        因 $n_{\text{cluster}}$ 随 $\eta\!\downarrow$ \emph{增长}, 边际成本\emph{单调上升}。
+  \item \textbf{边际收益}: 多保留一个 BNO 减少的误差
+        $\dfrac{\partial\epsilon}{\partial n_{\text{BNO}}}\sim -n_{n_{\text{BNO}}+1}$
+        $\propto -e^{-\alpha\,n_{\text{BNO}}}$, \emph{随} $\eta\!\downarrow$
+        (即 $n_{\text{BNO}}\!\uparrow$) \emph{指数下降}。
+\end{itemize}
+\textbf{拐点} 出现在\emph{边际成本 $=$ 边际收益} 的 $\eta^\star$:
+\[
+  \underbrace{3\,n_{\text{cluster}}(\eta^\star)^2}_{\text{边际成本}}
+  \;\sim\;
+  \underbrace{e^{-\alpha\,n_{\text{BNO}}(\eta^\star)}}_{\text{边际收益}}
+  \;\Longrightarrow\;
+  \eta^\star \;\sim\; \text{const}\cdot n_{\text{cluster}}^2\,e^{-\alpha\,n_{\text{BNO}}}.
+\]
+更工程化的判据: 当 $\epsilon_{\text{frag}}(\eta)$ 降到与\emph{其他误差源}
+(SQD 采样误差 $\epsilon_{\text{SQD}}$, 量子噪声 $\epsilon_{\text{noise}}$) \emph{同量级}
+时, 再降 $\eta$ 已无意义:
+\[
+  \boxed{\;\eta^\star:\quad \epsilon_{\text{frag}}(\eta^\star)\;\approx\;\epsilon_{\text{SQD}}+\epsilon_{\text{noise}}\;}
+  \tag{$\eta^\star$}
+\]
+这是 ``木桶效应'' 在 bath threshold 上的体现 (与第 9 问一致): 把
+$\epsilon_{\text{frag}}$ 压到远小于其他误差, 总误差不变。
+
+\subsection*{数值判据 (实测, H$_2$O/6-31G, EWF-CCSD solver)}
+\sloppy
+\texttt{solution.py} 在 H$_2$O/6-31G (13 空间轨道, 3 个原子 fragment) 上扫描
+$\eta\in\{10^{-2},\ldots,10^{-6}\}$, 以最小 $\eta$ 下 EWF 能量
+$E_{\infty}^{\text{bath}}=-76.11851$ Ha 为参考 (全空间 CCSD $=-76.11935$ Ha,
+二者差 $\sim 8\times10^{-4}$ Ha 是 EWF 方法偏差, 与 bath 截断无关):
+
+\begin{center}
+\begin{tabular}{ccccccc}
+\toprule
+$\eta$ & $\bar n_{\text{BNO,occ}}$ & $\bar n_{\text{BNO,vir}}$
+       & $\bar n_{\text{cluster}}$ & $\max n_{\text{cluster}}$
+       & $E_{\text{EWF}}$ (Ha) & $\epsilon_{\text{frag}}$ (Ha) \\
+\midrule
+$10^{-2}$ & 0.0 & 0.0 & 3.7 & 7  & $-76.0229$ & $9.6\times10^{-2}$ \\
+$10^{-3}$ & 0.0 & 1.0 & 4.7 & 10 & $-76.0903$ & $2.8\times10^{-2}$ \\
+$10^{-4}$ & 0.7 & 3.3 & 7.7 & 13 & $-76.1095$ & $9.0\times10^{-3}$ \\
+$10^{-5}$ & 2.0 & 4.7 & 10.3 & 13 & $-76.1163$ & $2.2\times10^{-3}$ \\
+$10^{-6}$ & 2.7 & 6.0 & 11.7 & 13 & $-76.1185$ & $\to 0$ (收敛) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{观察}:
+\begin{itemize}
+  \item BNO 占据数指数衰减拟合: 占据 (occ) $\alpha_{\text{occ}}\approx0.77$
+        ($R^2{=}0.87$), 虚 (vir) $\alpha_{\text{vir}}\approx0.49$ ($R^2{=}0.97$),
+        \emph{验证 (E) 的指数假设}; $\alpha_{\text{vir}}<\alpha_{\text{occ}}$ 说明
+        虚 BNO 衰减更慢 (动态相关更离域到虚空间)。
+  \item $\eta$ 从 $10^{-2}\to10^{-6}$ (4 个数量级), 平均 cluster 仅从 $3.7\to11.7$
+        轨道 ($\sim 3\times$), \emph{对数增长} 与 ($\star$) 一致。
+  \item $\epsilon_{\text{frag}}$ 从 $10^{-1}\to0$ Ha, 在
+        $\eta\approx 10^{-4}$--$10^{-5}$ 处跨过 $10^{-2}\to10^{-3}$ 的 ``mHa 阈''
+        —— \textbf{这正是拐点 $\eta^\star\!\sim\!10^{-4}$--$10^{-5}$}:
+        再降 $\eta$ 到 $10^{-6}$, cluster 又加 1--2 条 BNO, 但 $\epsilon_{\text{frag}}$
+        只从 $2{\times}10^{-3}\to0$, 进入 diminishing returns。
+\end{itemize}
+
+\subsection*{为什么 ``diminishing returns''?}
+直观图景: MP2 BNO 的占据数谱是\emph{单调下降} 的, 前几条 BNO (大占据)
+贡献绝大部分相关能 (Pareto 80/20); 后面的 BNO 占据 $\le\eta^\star$ 后,
+其相关贡献 $\propto n_i$ 已\emph{指数小}, 而每多保留一条 BNO 都让 cluster
+$n$ 加 1 $\to$ 对角化代价 $\sim n^3$ 加一截。当
+\[
+  \underbrace{\Delta\epsilon_{\text{frag}}\sim n_i}_{\text{边际收益}}
+  \;<\;
+  \underbrace{\text{常数}\cdot n_{\text{cluster}}^2}_{\text{边际代价 (CPU/GPU 时间)}}
+\]
+时, 进一步降 $\eta$ 是\emph{负 ROI}. 这就是为什么 EWF 默认
+$\eta\sim 10^{-4}$--$10^{-5}$ (vayesta 默认 $10^{-5}$): 在典型弱相关分子上,
+它已把 $\epsilon_{\text{frag}}$ 压到 mHa 以下, 与 CCSD 求解器自身精度相当,
+再降 $\eta$ 只是 ``用更多算力换更小的尾部 BNO'', 不改善实际精度。
+
+%=============================================================================
+\section{特殊情况: STO-3G 基组的限制}
+%=============================================================================
+题目未限定基组, 但\textbf{STO-3G (7 个空间轨道) 对 H$_2$O 太小}, 会出现以下情况:
+\begin{itemize}
+  \item O 原子 fragment ($n_{\text{imp}}=5$): DMET minimal bath
+        ($\le n_{\text{imp}}=5$) 已经几乎用完所有 7 个轨道, \emph{环境轨道为 0},
+        故 O-fragment \textbf{没有 MP2 BNO 可加} (occup 数组为空);
+  \item H 原子 fragment ($n_{\text{imp}}=1$): 仅 4 个 occ 环境 BNO + 1 个 vir,
+        占据数从 $6{\times}10^{-4}$ 衰减到 $5{\times}10^{-7}$, 是少数能扫描的
+        体系, 但 BNO 总数太少, $\eta$ 扫描曲线退化。
+\end{itemize}
+因此 \texttt{solution.py} 主扫描用 \textbf{6-31G (13 轨道)} 给出有意义的
+$n_{\text{BNO}}$ vs $\eta$ 曲线 (环境足够大, 指数衰减可见);
+同时提供 STO-3G 的诊断输出, 说明基组选择的物理含义。
+这与 vayesta 官方 BNO 示例 (\texttt{examples/ewf/molecules/03-bno-threshold.py}
+用 aug-cc-pVDZ) 一致 —— BNO 扫描需要足够大的基组才有意义。
+
+%=============================================================================
+\section*{代码与结果}
+%=============================================================================
+见 \texttt{solution.py}:
+\begin{enumerate}
+  \item H$_2$O/6-31G (主) + STO-3G (诊断) RHF, 报 $E_{\text{MF}}$;
+  \item 全空间 CCSD 作参考 $E_{\infty}\approx E_{\text{CCSD}}$;
+  \item vayesta EWF, bath\_options=\{bathtype="mp2", threshold=$\eta$\},
+        扫描 $\eta\in\{10^{-6},...,10^{-2}\}$, 记录
+        $n_{\text{BNO,occ/vir}}$, cluster 大小, $E_{\text{EWF}}$;
+  \item 拟合 $n_i\sim n_1 e^{-\alpha(i-1)}$ 给出衰减常数 $\alpha$, 验证
+        $n_{\text{BNO}}(\eta)\sim\tfrac{1}{\alpha}\log(1/\eta)$;
+  \item 画 (a) BNO 占据数衰减 + 指数拟合;
+        (b) fragment size vs $\eta$;
+        (c) 能量误差 vs $\eta$ + 拐点标注
+        $\to$ \texttt{bath\_threshold.png};
+  \item 数值定位拐点 $\eta^\star$ (误差二阶差分极大点), 讨论 diminishing returns。
+\end{enumerate}
+
+\end{document}

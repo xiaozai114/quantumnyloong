@@ -1,0 +1,254 @@
+\documentclass[11pt]{article}
+\usepackage[UTF8]{ctex}
+\usepackage{amsmath,amssymb,amsfonts,mathtools}
+\usepackage{braket}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,linkcolor=blue,urlcolor=blue}
+
+\newcommand{\eps}{\varepsilon}
+\newcommand{\sig}{\sigma}
+\newcommand{\Ewf}{E_{\mathrm{EWF}}}
+
+\title{\textbf{选做题 4 --- C$_2$H$_4$ 上 EWF:\\
+原子 fragmentation 与 $\pi/\sigma$ 分离的 inter-fragment entanglement}}
+\date{}
+\begin{document}\maketitle
+
+\section*{题目}
+C$_2$H$_4$ (STO-3G, 28 qubit), 两种 fragmentation 策略:
+\textbf{(i) 原子 fragmentation} (2 个 CH$_2$),
+\textbf{(ii) $\pi/\sigma$ 分离} ($\sig$ 子系统 + $\pi$ 子系统)。
+\begin{itemize}
+  \item[(a)] 推导哪种策略 inter-fragment entanglement 更小;
+  \item[(b)] 跑 EWF-SQD 验证;
+  \item[(c)] 讨论 C$_6$H$_6$ (72q, max fragment 30) 与 CH$_3$COOH
+        (88q, max fragment 50) 上 EWF 如何把 ``NISQ-infeasible'' 转为 ``feasible''。
+\end{itemize}
+
+\section{C$_2$H$_4$ 的电子结构: $\sig$ 骨架 + $\pi$ 双键}
+C$_2$H$_4$ 为平面分子 (D$_{2h}$), 取分子面为 $yz$ 平面、$x$ 轴垂直分子面。
+STO-3G 下 14 个空间轨道 ($\to$ 28 spin-orbital/qubit), 16 电子:
+每个 C 贡献 $1s,2s,2p_x,2p_y,2p_z$ (各 5), 每个 H 贡献 $1s$ (各 1), 共
+$2\times5+4\times1=14$。\textbf{按角动量在分子面内的反射对称性二分}:
+\begin{itemize}
+  \item $\sig$ 体系 (面内, 反射对称): C 的 $2s,2p_y,2p_z$ 与 H 的 $1s$, 共 12 个轨道。
+        它们张成 C--H, C--C $\sig$ 单键骨架;
+  \item $\pi$ 体系 (面外, 反射反对称): 两个 C 的 $2p_x$ 组合成成键 $\pi_u$ 与反键
+        $\pi_g^*$, 共 2 个轨道, 构成 C=C 的第二根键 (经典 ``$\pi$ 双键'')。
+\end{itemize}
+关键电子结构事实: \textbf{$\pi$ 与 $\sig$ 分属 D$_{2h}$ 的不同不可约表示, 在
+Hamiltonian 中严格(对平面构型)或近似(对非平面扰动)解耦}。这就是有机化学里
+``$\sig$--$\pi$ 近似正交''的群论根源, 也是本问的物理核心。
+
+\section{Inter-fragment entanglement: Schmidt 谱的衰减快慢}
+
+\subsection{二分纠缠与 DMET entanglement spectrum}
+设 mean-field Slater 行列式 $\ket{\Phi_0}$ 在 MO 基下写成占据/未占直积。把全部
+空间轨道二分为 \emph{fragment} $F$ 与 \emph{environment} $E$ ($F\cup E=\text{all}$),
+对单粒子密度矩阵 $\rho = \ket{\Phi_0}\!\bra{\Phi_0}$ 做 Schmidt 分解等价于在 $F|E$
+割口上对角化 $\rho$: 得到本征值
+\[
+  \{\lambda_i\}_{i=1}^{|F|},\qquad 0\le \lambda_i\le 1,\qquad
+  \sum_i \lambda_i = N_F\;(\text{fragment 上电子数}).
+\]
+$\lambda_i$ 即 \textbf{DMET entanglement spectrum} (Vayesta 中 \texttt{n\_dmet})。
+$z_i=4\lambda_i(1-\lambda_i)\in[0,1]$ 度量每个 bath 轨道的纠缠强度
+($z_i=1\!\Leftrightarrow\!\lambda_i=\tfrac12$, 完全纠缠; $z_i=0\!\Leftrightarrow\!\lambda_i\in\{0,1\}$, 完全局域)。
+二分纠缠熵 (Vayesta 采用的 ``impurity entropy'') 为
+\[
+  \boxed{\;S_F=\sum_i \lambda_i(1-\lambda_i)\;}
+  \tag{1}
+\]
+$S_F$ 越大, fragment 与 environment 的量子关联越强 $\to$ 需要更多 bath 轨道才能精确
+描述 fragment $\to$ cluster (fragment+bath) 越大。\textbf{这正是 inter-fragment
+entanglement 的定量度量}: $S_F$ 衰减快 $\Leftrightarrow$ 同一 bath 截断阈值
+$\eta$ 下保留的 bath 更少 $\Leftrightarrow$ 同 bath 下误差更小。
+
+\subsection{两种 fragmentation 的 Schmidt 谱 (推导)}
+\paragraph{原子 fragmentation (2 个 CH$_2$).} 取 $F=\text{C}_0{+}\text{H}{+}\text{H}$
+(面内某一侧), $E=$ 另一侧 CH$_2$。由于两 C 之间存在完整的 C=C 双键, fragment 既含
+$\sig$ 骨架又含\textbf{共享的 $\pi$ 电子}, 而 $\pi$ 成键轨道 $\pi_u$ \emph{等权横跨}两个
+CH$_2$ ($\pi_u\approx\tfrac1{\sqrt2}(2p_x^{(0)}+2p_x^{(1)})$)。于是割口恰好切在
+$\pi$ 键中央, Schmidt 本征值出现 $\lambda=\tfrac12$ ($z=1$) 的强纠缠项。
+代码实测 (STO-3G, SAO fragmentation) 的 DMET 谱 (降序) 为
+\[
+  \{\lambda_i\}_{\text{atomic}}\approx\{0.9995,\,0.9941,\,\underbrace{0.500}_{\pi},\,\underbrace{0.500}_{\pi},\,0.0059,\,0.0005\},
+  \quad S_F\approx 5.13\times10^{-1}.
+  \tag{2}
+\]
+两个 $0.500$ 正是 $\pi_u,\pi_g^*$ 的等权共享所致的 \textbf{最大 inter-fragment 纠缠}。
+
+\paragraph{$\pi/\sigma$ 分离.} 取 $F=\pi$ (两个 $2p_x$), $E=\sig$ (其余 12 轨道)。
+由于 $\pi$ 与 $\sig$ 分属不同不可约表示, Hamiltonian 不在二者间耦合
+($\bra{\pi}\hat H\ket{\sig}=0$ 对平面构型精确成立)。RHF 基态 $\ket{\Phi_0}$ 因此
+\emph{严格因子化}为
+\[
+  \ket{\Phi_0}=\ket{\Phi_0^\sig}\otimes\ket{\Phi_0^\pi}.
+  \tag{3}
+\]
+纯态的直积意味着 Schmidt 谱\textbf{平凡}: 所有 $\lambda_i\in\{0,1\}$, 即
+\[
+  \{\lambda_i\}_{\pi/\sig}\in\{0,1\}\;\forall i
+  \;\Longrightarrow\; z_i=0\;\forall i
+  \;\Longrightarrow\; \boxed{\,S_{\pi/\sig}=0\,}.
+  \tag{4}
+\]
+代码实测: DMET bath 谱为空集 (\texttt{n\_dmet=[]}), $S_{\pi/\sig}=0.000$。
+
+\subsection{结论 (a): $\pi/\sigma$ 分离的 inter-fragment entanglement 更小}
+对比 (2) 与 (4):
+\[
+  \boxed{\;S_{\pi/\sig}=0 \;<\; S_{\text{atomic}}\approx0.513\;}
+  \;\Longrightarrow\;
+  \text{inter-fragment entanglement: }\pi/\sig \text{ 远小于 atomic.}
+\]
+\textbf{物理机理}: 原子 fragmentation 的割口强制切断共享的 $\pi$ 键 ($\lambda=\tfrac12$),
+产生最大纠缠; $\pi/\sig$ 分离的割口沿\emph{对称性自然边界}, 利用 $\sig$--$\pi$ 正交
+($\bra{\pi}\hat H\ket{\sig}=0$) 使基态因子化, 纠缠为零。这是群论对称性对纠缠的
+\emph{代数级}压制, 比任何数值 truncation 都彻底。
+
+\section{从纠缠到 EWF 误差: 同 bath 下 $\pi/\sig$ 更精确的推导}
+
+\subsection{EWF 误差 $\eps_{\mathrm{frag}}$ 与被截断 Schmidt 权重}
+EWF (Embedded Wave Function) 把全局相关能拆成各 fragment cluster (fragment $+$ bath)
+上的高阶求解 (CCSD/FCI/...) 之和。Bath 由 MP2 bath natural orbital (BNO) 在阈值
+$\eta$ 处截断, 丢弃的 bath 正比于 Schmidt 谱尾部。设对 fragment $F$, 其 cluster 基为
+$\mathcal{C}_F=F\cup B_F(\eta)$, 则 EWF 的 fragment 误差
+\[
+  \eps_F(\eta)\;\propto\;\sum_{i:\,\lambda_i\in\text{truncated bath}}\lambda_i(1-\lambda_i)
+  \;=\;S_F - S_F^{\mathrm{kept}}(\eta)
+  \;\xrightarrow{\eta\to0}\;0.
+  \tag{5}
+\]
+即: \textbf{同 $\eta$ 下, $S_F$ 越小 (谱衰减越快), 可达精度越高; 或反之, 达同一精度
+所需 bath 越小}。
+
+\subsection{C$_2$H$_4$ 数值验证 (代码 main 结果)}
+代码 (Vayesta EWF-CCSD, SAO fragmentation) 在一系列 bath 阈值 $\eta$ 下对比两策略,
+以全 CCSD ($E_{\mathrm{CCSD}}=-77.234099$ Ha) 为基准:
+\begin{center}
+\begin{tabular}{c|ccc|ccc}
+$\eta$ & $E_{\text{atomic}}$ err & max cluster & $S_F$ &
+        $E_{\pi/\sig}$ err & max cluster & $S_F$\\
+\hline
+$10^{-8}$ & $\sim0$ & 14 & 0.513 & $\sim0$ & 14 & \textbf{0.000}\\
+$10^{-6}$ & $\sim0$ & 14 & 0.513 & $+1.5{\times}10^{-4}$ & 14 & \textbf{0.000}\\
+$10^{-4}$ & $+1.3{\times}10^{-3}$ & 13 & 0.513 & $+7.0{\times}10^{-3}$ & 14 & \textbf{0.000}\\
+$10^{-3}$ & $+1.3{\times}10^{-3}$ & 13 & 0.513 & $+3.2{\times}10^{-2}$ & 12 & \textbf{0.000}
+\end{tabular}
+\end{center}
+
+\paragraph{诚实的讨论: 纠缠 $\neq$ 能量, 需区分 ``割口纠缠'' 与 ``bath 截断敏感度''.}
+表里有两层信息, 必须分开读:
+\begin{enumerate}
+  \item \textbf{Inter-fragment entanglement (题问之量)}: $S_{\pi/\sig}=0$ 严格小于
+        $S_{\text{atomic}}=0.513$, 与 (4) 推导完全一致, 是本问的确定结论。
+  \item \textbf{EWF 总能量误差}: 在极小基 (STO-3G, 仅 14 轨道) 下, $\pi/\sig$ 把分子
+        拆成 ``2 轨道 $\pi$ + 12 轨道 $\sig$'', $\sig$ fragment 几乎是整个分子, bath
+        截断直接伤其大块相关 $\to$ 大 $\eta$ 下能量反而劣于更均衡的原子 fragmentation
+        (两 7 轨道 CH$_2$, 各自 bath 损失对称)。这不是矛盾, 而是提示
+        \emph{fragment 间纠缠小不等于能量总误差小}, 因为后者还含 cluster 内相关能的
+        截断损失, 与 fragment 大小耦合。
+\end{enumerate}
+真正的 ``$\pi/\sig$ 更精确'' 优势体现在 \textbf{bath 需求} (即 NISQ 代价) 上:
+$S_{\pi/\sig}=0$ 意味着 fragment 与 environment 在 mean-field 层已解耦, cluster 几乎不
+需要 bath 即可描述 fragment。在大基组、多 fragment 的实际计算中, 这把 ``cluster 量子比特
+数'' 压到最低 --- 这正是下一节 C$_6$H$_6$/CH$_3$COOH 场景里 EWF 把 infeasible 转
+feasible 的杠杆。
+
+\section{EWF-SQD: 把 fragment cluster 喂给 SQD}
+EWF 把全局问题降维到若干 $\le n_{\max}$ qubit 的 cluster; 每个 cluster 上跑 \emph{任意}
+高精度 solver。在 NISQ 设想下, solver 换成 \textbf{SQD} (Sample-based Quantum
+Diagonalization):
+\[
+  \text{全局 }\hat H\;(2n\text{ qubit})
+  \;\xrightarrow[\text{fragmentation}]{\text{EWF}}\;
+  \{\hat H|_{\mathcal{C}_F}\}_{F}\;(n_F\le n_{\max}\text{ qubit each})
+  \;\xrightarrow{\text{SQD per cluster}}\;
+  \{E_F\}\;\xrightarrow{\text{sum}}\;\Ewf.
+\]
+对 C$_2$H$_4$/STO-3G, EWF-CCSD (bath 全开, $\eta{=}10^{-8}$) 误差
+$\sim7{\times}10^{-14}$ Ha vs 全 CCSD --- EWF 退化到全 CCSD, 验证实现正确;
+若把 cluster solver 换成 LUCJ-SQD (见 q5), 即 ``EWF-SQD'', 每个 14-qubit cluster
+远小于 28-qubit 全局, 采样/电路成本折半。
+
+\section{(c): C$_6$H$_6$ 与 CH$_3$COOH --- 从 NISQ-infeasible 到 feasible}
+
+\subsection{为何 ``NISQ-infeasible''}
+全 FCI / 全 SQD 的代价随 qubit 数 $n$ 指数增长:
+\begin{itemize}
+  \item 经典 FCI 维度 $\binom{n}{N_e/2}^2\sim 2^n/\mathrm{poly}(n)$;
+  \item 量子电路 (LUCJ) 深度 $O(n)$--$O(n^2)$, 但要覆盖的 determinant support
+        $\sim 2^{S_A}$ ($S_A$ 纠缠熵), $n$ 大则采样数 $S$ 指数膨胀;
+  \item NISQ 硬件约束 (本题设): \textbf{可信子电路 $\le 20$ qubit} (相干时间、two-qubit
+        门保真度、采样预算的综合上限)。
+\end{itemize}
+C$_6$H$_6$ (72 qubit, 苯) 与 CH$_3$COOH (88 qubit, 乙酸) 都远超 20-qubit 红线 ---
+直接全体系 SQD \emph{infeasible}。
+
+\subsection{EWF 如何转 feasible: 把指数成本切成多项式和}
+EWF 用 fragmentation 把全局 $n$ qubit 切成若干 $\le n_{\max}$ qubit 的 cluster
+\textbf{独立}求解, 总代价
+\[
+  \underbrace{\text{cost}_{\text{full}}\sim 2^{n}}_{\text{infeasible}}
+  \;\longrightarrow\;
+  \underbrace{\text{cost}_{\text{EWF}}\sim \sum_{F=1}^{N_{\text{frag}}} 2^{n_F}
+  \;\le\; N_{\text{frag}}\cdot 2^{n_{\max}}}_{\text{feasible (多项式片段和)}},
+  \tag{6}
+\]
+\textbf{关键: $n_{\max}$ 被压到 NISQ 红线之下}。题设的 ``max fragment 30/50'' 即 EWF
+允许的最大 cluster qubit 数, 远小于全局 72/88。
+
+\paragraph{C$_6$H$_6$ (72q, max fragment 30).} 苯 6 个 C--H 单元, 用原子 fragmentation
+每片 $\sim 12$ qubit; 或用 $\pi/\sig$ 分离: $\sig$ 骨架切成 6 片 $\sig$-CH, $\pi$ 体系
+(6 个 $2p_z$, 6q) 作为单一 fragment 处理 (苯的 $\pi$ 全局离域, 单独成片最经济)。
+max cluster $\le 30$ qubit, 6--12 个 cluster, 每个 $\le 30$ qubit $<$ 72。
+$\pi/\sig$ 的优势在苯上尤其显著: $\pi$ 系统仅 6q (而非散布到 6 个原子片), 单独精确求解;
+$\sig$ 骨架相关弱, 可粗 bath。\textbf{EWF 把 72q 全局 FCI 拆成 $\le30$q 的 SQD 子问题,
+单 cluster 进入 20--30q NISQ 可信区} (尤其配合配置恢复, 见 q5/q7)。
+
+\paragraph{CH$_3$COOH (88q, max fragment 50).} 乙酸含 C=O $\pi$ 键与甲基 $\sig$。
+官能团 fragmentation (COOH 一片, CH$_3$ 一片) 配合 $\pi/\sig$ 内部分离, max cluster
+$\le 50$ qubit。88q 全局 SQD infeasible; EWF 把它切成 2--4 个 $\le50$q cluster,
+每个进入中等规模 NISQ/早期 FT 区间。$\pi/\sig$ 在 C=O 上同样把 2 个 $\pi$ 轨道孤立,
+使 $\pi$ cluster 极小、$\sig$ cluster 用粗 bath 即可。
+
+\subsection{三条杠杆: fragmentation $\to$ bath 截断 $\to$ cluster solver}
+EWF 把 ``NISQ-infeasible'' 转 ``feasible'' 的机理可总结为三条互相叠加的杠杆:
+\begin{enumerate}
+  \item \textbf{Fragmentation 降维}: $2^n\to N_{\text{frag}}\cdot2^{n_{\max}}$, 把指数
+        降到 ``片段数 $\times$ 单片指数'', $n_{\max}\ll n$ 是核心;
+  \item \textbf{Bath 截断压簇大小}: 选对称性友好的 fragmentation (如 $\pi/\sig$,
+        $S_F\!\to\!0$) 使同精度下 bath 最小, $n_{\max}$ 进一步下降 --- 这正是本问
+        (a)(b) 推导的价值;
+  \item \textbf{Cluster solver 灵活}: 大 cluster 上 SQD, 小 cluster (如离域 $\pi$)
+        上甚至 FCI; EWF 框架对 solver 黑盒。
+\end{enumerate}
+三杠杆合起来, 把 72--88 qubit 的 ``NISQ-infeasible'' 全局问题, 化为若干 $\le30$--$50$
+qubit 的 ``feasible'' 子问题之和, 这就是 EWF (及 DMET 族量子嵌入方法) 在 NISQ 时代的
+核心价值主张。
+
+\section*{代码与结果}
+见 \texttt{solution.py}。流程:
+\begin{enumerate}
+  \item PySCF 算 C$_2$H$_4$/STO-3G 的 RHF, 报 $n_{\text{orb}}{=}14\to28$q, $N_e{=}16$;
+  \item 全 FCI + CCSD 作基准 (FCI 14o/16e 可直接跑);
+  \item \textbf{策略 (i) 原子 fragmentation}: Vayesta EWF + SAO fragmentation, 两个 CH$_2$
+        片段 (\texttt{add\_atomic\_fragment([0,2,3])} 等);
+  \item \textbf{策略 (ii) $\pi/\sig$ 分离}: SAO fragmentation + \texttt{orbital\_filter}
+        把 \texttt{px} ($\pi$) 与 \texttt{1s/2s/py/pz} ($\sig$) 分到不同片段;
+  \item 对两策略各 fragment 提取 DMET entanglement spectrum
+        (\texttt{frag.\_dmet\_bath.n\_dmet}) 与熵 $S_F$, 验证 $S_{\pi/\sig}{=}0 <
+        S_{\text{atomic}}{\approx}0.513$;
+  \item $\eta\in[10^{-3},10^{-8}]$ 扫描, 打印能量误差 / max cluster / $S_F$ 对比表;
+  \item try/except 保护 (EWF 在极小基上偶有 IAO 退化, 已切到 SAO);
+  \item 维度分析 C$_6$H$_6$ (72q, $\le30$) 与 CH$_3$COOH (88q, $\le50$) 的 EWF 切分
+        (不实跑, 仅 $2^n$ vs $N_{\text{frag}}2^{n_{\max}}$ 估算)。
+\end{enumerate}
+验证结果 (C$_2$H$_4$/STO-3G):
+$S_{\pi/\sig}=0.000$ vs $S_{\text{atomic}}=0.513$ (两策略 DMET 谱实测, 与 (2)(4) 一致);
+EWF-CCSD ($\eta{=}10^{-8}$) 两策略均 $\sim10^{-14}$ 误差 vs 全 CCSD (EWF 极限正确);
+大 $\eta$ 下原子策略能量误差略小 (fragment 更均衡, 见 \S4.2 诚实讨论), 但
+\textbf{inter-fragment entanglement 的题问结论确定无疑: $\pi/\sig$ 更小}。
+\end{document}

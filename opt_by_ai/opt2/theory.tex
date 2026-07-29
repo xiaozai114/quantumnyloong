@@ -1,0 +1,300 @@
+\documentclass[11pt]{article}
+\usepackage[UTF8]{ctex}
+\usepackage{amsmath,amssymb,amsfonts,mathtools}
+\usepackage{cancel}
+\usepackage{braket}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,linkcolor=blue,urlcolor=blue}
+
+\title{\textbf{第二大题选做题 2 --- 量子噪声与配置恢复}\\
+Quantum Noise and Configuration Recovery for LiH LUCJ-SQD}
+\date{}
+\begin{document}\maketitle
+
+\section*{题目}
+LiH / STO-3G 的 LUCJ (Local Unitary Cluster Jastrow) 电路共有 $N_{2q}$ 个两比特门
+(CNOT)、$N_{1q}$ 个单比特门, 每个两比特门后以概率 $p_{2q}{=}0.01$ 发生退极化噪声,
+每个单比特门后以概率 $p_{1q}{=}0.001$ 发生退极化噪声。
+\begin{itemize}
+  \item 推导 \emph{每位有效翻转率} $\epsilon_{\text{eff}}\approx
+        (p_{2q}N_{2q}+p_{1q}N_{1q})/2$;
+  \item 比较 SQD 能量在有/无配置恢复 (configuration recovery) 下的表现;
+  \item 定出恢复失效的噪声阈值 $p_{2q}^{\star}$。
+\end{itemize}
+
+\section{退极化噪声模型}
+单比特 / 两比特退极化信道把态 $\rho$ 映成
+\[
+  \mathcal{E}_p(\rho)=(1-p)\,\rho+\frac{p}{3}\bigl(X\rho X+Y\rho Y+Z\rho Z\bigr)
+  \quad(\text{1q}),\qquad
+  \mathcal{E}_p^{(2)}(\rho)=(1-p)\,\rho+\frac{p}{15}\!\!\sum_{\substack{P\ne II\\P\in\{I,X,Y,Z\}^{\otimes2}}}\!\!P\rho P
+  \quad(\text{2q}).
+\]
+直觉: 每个门后以概率 $p$ ``出了错'', 出错的 Pauli 是 $3$ 种 (1q) 或 $15$ 种 (2q) 非平凡
+Pauli 之一, 各以等概率取。$X$ 与 $Y$ 都翻转测量基下的比特值 ($Y|0\rangle=i|1\rangle$,
+$Y|1\rangle=-i|0\rangle$), $Z$ 不翻。所以在出错的 $3$ 种 1q Pauli 中有 $2$ 种 ($X,Y$)
+引起比特翻转, 占 $\tfrac23$。综合 ``出错概率 $p$'' 与 ``出错且翻的概率 $\tfrac23$'':
+\[
+  \boxed{\;\text{1q 门后比特翻转的概率} \;=\; \tfrac{2}{3}\,p
+        \;\;\Rightarrow\;\; \text{保留原值的概率} \;=\; 1-\tfrac{2}{3}p.\;}
+\]
+\textbf{两比特门} 同理: $15$ 种非平凡 Pauli 中, 使 \emph{某一个特定比特} 翻转
+(另一个任意) 的 Pauli 数 $=8$ ($X/Y$ 在该比特 $\times$ $\{I,X,Y,Z\}$ 在另一比特),
+故使该比特翻的概率 $\tfrac{8}{15}$, 不翻的概率 $\tfrac{7}{15}$。但实用上通常把 2q
+退极化的 ``有效单比特翻转率'' 近似为 $p_{2q}/2$ (每位贡献 $\sim p_{2q}/2$, 因
+$\tfrac{8}{15}\approx\tfrac12$)。本文沿用题面约定的因子 $\tfrac12$。
+
+\subsection*{电路总错误率 = 各门错误之和}
+每个门独立作用, 一个比特穿过整个深度为 $d$ 的电路后, 被作用到的 1q 门数为 $n_1^{(i)}$,
+2q 门数为 $n_2^{(i)}$ ($i$ 标记比特)。每位被翻转的期望次数
+$\mu_i\approx\tfrac23 n_1^{(i)}p_{1q}+\tfrac12 n_2^{(i)}p_{2q}$
+(用上面 $2/3,1/2$ 的近似)。求和 ($\sum_i n_1^{(i)}=N_{1q}$,
+$\sum_i n_2^{(i)}=2N_{2q}$, 后者因每个 2q 门同时作用两比特):
+\[
+  \sum_i \mu_i\;\approx\;\tfrac23 N_{1q}\,p_{1q}+\tfrac12\cdot 2N_{2q}\,p_{2q}
+                  \;=\;\tfrac23 N_{1q}p_{1q}+N_{2q}p_{2q}.
+\]
+对 $N=2n_{\text{orb}}$ 个比特求平均, 得 \emph{单比特预期翻转次数}
+$\bar\mu=(\tfrac23 N_{1q}p_{1q}+N_{2q}p_{2q})/N$。本文沿用题面 \textbf{简化的标度
+因子 $\tfrac12$} (把单/双比特门都按 ``翻转率 $=p/2$'' 近似), 定义
+\emph{电路级错误预算}
+\[
+  \boxed{\;\epsilon_{\text{eff}}\;\approx\;\frac{p_{2q}N_{2q}+p_{1q}N_{1q}}{2}\;.\;}
+\]
+\textbf{解读}: $\epsilon_{\text{eff}}$ 是\emph{全电路 ``错误预算''} (忽略 $1/N$
+归一化的电路级聚合量, 与 $\bar\mu$ 差一个 $N/2$ 因子), 不是概率。它作为
+``恢复健康度'' 的标量追踪: 当 $\epsilon_{\text{eff}}\ll1$ 时, 全电路 ``错误预算
+$\ll1$'', 单比特被翻 $\ge2$ 次的概率 $O(\epsilon_{\text{eff}}^2)$ 可忽略,
+采样接近无噪; 当 $\epsilon_{\text{eff}}\gtrsim1$ 时, 电路级累积错误已 ``超过 1 个
+完整翻转预算'', 噪声主导, 配置恢复 (依赖平均占据 $\bar n_i$ 的判别力) 开始失效。
+题面用 $\epsilon_{\text{eff}}$ 作为 ``每比特翻转概率'' 的工程代理 (在
+$\epsilon_{\text{eff}}\ll1$ 区两者数值相近)。
+
+\subsection*{因子 $1/2$ 的精确来源}
+对\emph{单个比特} 经历一次 1q 退极化门: 出错的 3 种 Pauli ($X,Y,Z$) 中,
+$X,Y$ 翻转该比特 (占 $\tfrac23$), $Z$ 不翻 (占 $\tfrac13$)。即 ``翻转率 $=$
+$\tfrac23 p$''。若进一步取 $\tfrac23\approx\tfrac12$ (粗略平均到 ``出错的 4 种
+Pauli 含 $II$ 偶然也算上'' 的等价描述, 实际数值 $\tfrac23\ne\tfrac12$), 即得题面
+$\tfrac12$ 因子。本题用题面公式, 物理上 $\tfrac12$ 是常用的工程近似 (与 IBM /
+Google 噪声报告里 ``depolarizing $p$ 对应 $p/2$ 的 $X$-flip 等效误差'' 一致)。
+
+\section{LiH LUCJ 电路的 $N_{2q},N_{1q}$}
+用 \texttt{ffsim.UCJOpSpinBalanced.from\_t\_amplitudes} 从 LiH/STO-3G 的 CCSD
+$t_1,t_2$ 振幅构造标准 UCJ 算符 (双因子分解 + 对角 Coulomb Jastrow + Givens 轨道旋转),
+经 \texttt{qiskit} 转成电路并 \texttt{decompose} 到 $\{u,\text{CNOT}\}$ 基 (代码 \S
+\texttt{count\_gates})。$2n_{\text{orb}}=12$ qubit, UCJ 层数 $L=16$ (CCSD 振幅驱动):
+\begin{center}
+\begin{tabular}{c|ccc}
+量 & 值 & 量 & 值 \\
+\hline
+$N_{2q}$ (CNOT) & $\approx 3764$ & $N_{1q}$ ($u$ 门) & $\approx 17\,510$ \\
+电路深度 & $\approx 2920$ & UCJ 层数 $L$ & $16$
+\end{tabular}
+\end{center}
+(代码 \texttt{count\_gates} 用 \texttt{circ.decompose(reps=6)} 把 ffsim 自定义
+门全展开到 $\{u,\text{cx}\}$; 确切数随 qiskit 版本与 \texttt{decompose} 深度微变。)
+代入题面参数 $p_{2q}{=}0.01$, $p_{1q}{=}0.001$:
+\[
+  \epsilon_{\text{eff}}\;=\;\frac{0.01\times3764+0.001\times17510}{2}
+                       \;\approx\;\frac{37.6+17.5}{2}\;\approx\;27.6\;\gg\;1.
+\]
+\textbf{结论}: 在 NISQ 典型 $p_{2q}{\sim}10^{-2}$ 下, 12-qubit LUCJ 电路的预期错误数
+$\sim 28$ 次/比特 --- \emph{远超恢复能力上限}。原始采样得到的几乎是纯噪声, 直接喂给
+SQD 的 ``无恢复'' 能量会严重偏高 (恢复失效, 见 \S\ref{sec:fail})。
+
+\section{配置恢复的作用与 ``失效'' 的两层含义}
+\label{sec:recover}
+SQD 的数据流水线
+\[
+  \ket{\Psi}\xrightarrow{\text{measure }S}\{b^{(s)}\}
+  \xrightarrow{\substack{\text{config.}\\\text{recovery}}}
+  \mathcal{S}\xrightarrow{\hat H|_{\mathcal{S}}}E_{\text{SQD}}.
+\]
+\textbf{配置恢复} 用经验平均占据 $\bar n_i=\tfrac1S\sum_s b_i^{(s)}$ 作先验, 把违例
+(粒子数 $\ne N_\alpha,N_\beta$) 的 bitstring 拉回 ``最像 HF / 主导组态'' 的合法组态
+(详见第 3 问的 ML 最优性推导)。它有\emph{两层} 失效含义:
+
+\begin{enumerate}
+  \item \textbf{先验失效}: $\bar n_i$ 失去判别力。无噪时 $\bar n_i\in\{0,1\}$;
+        $\epsilon_{\text{eff}}\to\tfrac12$ 时 $\bar n_i\to\tfrac12$ (每个比特
+        ``一半时间 1 一半时间 0''), $\mathrm{logit}(\bar n_i)\to0$, 恢复算法
+        ``不知翻哪位'', 退化到随机猜。这是 \emph{第 3 问的 $p^\star\approx0.5$ 阈值}。
+  \item \textbf{采样支撑崩塌}: 即便 $\bar n_i$ 仍有判别力, 若 $\epsilon_{\text{eff}}\gg1$,
+        噪声把所有主导组态的采样权重稀释到 $\sim 0$, 恢复 \emph{无 ``正确答案可指向''} ---
+        理想分布的信息已淹没在噪声里。
+\end{enumerate}
+对 LiH 12-qubit LUCJ 电路, $\epsilon_{\text{eff}}\approx28$ 意味着 \emph{两层都失效}。
+
+\subsection*{但 SQD 能量为何仍能接近 FCI?}
+代码实验显示一个反直觉现象: 即便 $\epsilon_{\text{eff}}\gg1$, 把 ``完全噪声'' 的
+bitstring 喂给 \texttt{tc\_sqd.compute\_ground\_state\_energy}, 得到的 $E_{\text{SQD}}$
+\emph{仍接近} FCI (误差 $\sim 10^{-4}$)。原因是 \textbf{SQD 的 Hamiltonian 投影是
+强降噪器}: $\mathcal{S}$ 取 ``噪声样本中合法的部分'' (粒子数守恒的子集),
+$\hat H|_{\mathcal{S}}$ 的最低本征态 \emph{自动} 趋向 FCI --- 只要 $\mathcal{S}$ 里
+\emph{包含} FCI 的 dominant determinant (HF + 关键双激发), 限制对角化就把权重 ``读''
+回来。bit-flip 噪声虽破坏采样分布, 但\emph{扩展}了 $\mathcal{S}$ (大量随机但合法
+的 determinant 进入), 反而 \emph{增大}子空间, 由变分单调性 $E_{\text{SQD}}$ 更接近
+FCI。这种 ``噪声变准'' 是 SQD 特有的、有别于 VQE 的鲁棒性来源, 但代价是采样分布
+\emph{不再反映} $\ket{\Psi_{\text{LUCJ}}}$ 的物理, 失去了 ``量子态制备'' 的意义。
+
+\subsection*{无恢复 vs 有恢复: 在 ``低噪声 + 稀疏采样'' 区才有显著差异}
+代码扫描 (LiH, $S{=}3000$, $\epsilon_{\text{flip}}\in[0,0.5]$) 给出:
+\begin{center}
+\begin{tabular}{c|cccc}
+$\epsilon_{\text{flip}}$ & $P_{\text{valid}}$ & $E_{\text{SQD}}^{\text{no-rec}}$ &
+$E_{\text{SQD}}^{\text{rec}}$ & $\Delta E=E_{\text{rec}}-E_{\text{no-rec}}$ \\
+\hline
+$0.00$ & $1.00$ & $-7.88254$ & $-7.88254$ & $0$ \\
+$0.01$ & $0.88$ & $-7.88259$ & $-7.88257$ & $+2{\times}10^{-5}$ \\
+$0.02$ & $0.79$ & $-7.88275$ & $-7.88264$ & $+1{\times}10^{-4}$ \\
+$0.05$ & $0.58$ & $-7.88275$ & $-7.88276$ & $-1{\times}10^{-5}$ \\
+$0.10$ & $0.38$ & $-7.88275$ & $-7.88276$ & $-1{\times}10^{-5}$ \\
+$0.30$ & $0.14$ & $-7.88276$ & $-7.88276$ & $0$ \\
+$0.50$ & $0.085$ & $-7.88276$ & $-7.88276$ & $0$
+\end{tabular}
+\end{center}
+(数据来自 \texttt{solution.py} 表 (c), $S{=}3000$, seed${=}42$。)
+
+\textbf{解读}:
+\begin{itemize}
+  \item \textbf{$P_{\text{valid}}$ 单调下降} ($1.0\to0.085$): 噪声越大, 粒子数守恒
+        的样本越少, 是恢复必要性的直接证据。
+  \item \textbf{低噪声} ($\epsilon_{\text{flip}}\lesssim0.02$): 恢复与无恢复差异
+        $\sim 10^{-4}$, 与理想 SQD 误差同量级。此时无恢复略低 ($\Delta E>0$),
+        因为绝大多数 bitstring 已合法, 无恢复的子空间更大 (含更多合法但非 HF 的
+        组态), 由变分单调性 $E_{\text{SQD}}$ 更低; 恢复把一些 ``偏离 HF'' 的
+        合法串 \emph{拉回 HF}, 反而损失这部分子空间。但二者都贴近 FCI, 差异在
+        采样涨落内。
+  \item \textbf{高噪声} ($\epsilon_{\text{flip}}\gtrsim0.05$): 两条曲线\emph{都}
+        收敛到 FCI ($-7.88276$, 与 $E_{\text{FCI}}{=}-7.88276$ 几乎重合) ---
+        因为噪声生成的合法组态已经覆盖了 FCI 的 dominant determinant,
+        Hamiltonian 投影接管降噪。此时 $P_{\text{valid}}$ 已很低 ($\lesssim0.6$),
+        但合法的那部分子空间仍充分。
+\end{itemize}
+\textbf{故 SQD 的恢复收益主要在 ``采样稀疏 + 中等噪声'' 窗口}: 样本不足以独立覆盖
+FCI support, 噪声又制造了违例, 恢复 ``回收'' 这些违例串, 提升子空间质量。在
+$S{=}3000$、LiH 这种 ``采样充分 + 子空间小'' 的设定下, Hamiltonian 投影本身已足够
+降噪, 恢复的能量改善不显著 (但 $P_{\text{valid}}$ 的提升是恢复的客观贡献)。
+
+\section{恢复失效阈值}
+\label{sec:fail}
+\textbf{判据}: 恢复\emph{失效} 定义为 ``$\bar n_i$ 先验失去判别力'', 即每位翻转率
+$r_{\text{flip}}\to\tfrac12$。把 $\epsilon_{\text{eff}}$ 当 ``每比特 Poisson 翻转
+期望'' 时, 真正的翻转概率 (翻转奇数次) 为
+\[
+  r_{\text{flip}}\;=\;\tfrac12\bigl(1-e^{-2\epsilon_{\text{eff}}}\bigr)
+  \;\xrightarrow[\epsilon_{\text{eff}}\to0]{}\;\epsilon_{\text{eff}}
+  \;\xrightarrow[\epsilon_{\text{eff}}\to\infty]{}\;\tfrac12,
+\]
+即 ``翻转 $\ge1$ 次后奇偶性 $\to$ 等概率''。$r_{\text{flip}}=\tfrac12$ 即
+$\epsilon_{\text{eff}}\to\infty$ (彻底随机)。实用上取 \textbf{$\epsilon_{\text{eff}}=1$}
+(对应 $r_{\text{flip}}\approx0.43$) 为 ``恢复仍可信'' 与 ``恢复失效'' 的分水岭:
+\begin{itemize}
+  \item $\epsilon_{\text{eff}}\lesssim1$ ($r_{\text{flip}}\lesssim0.43$):
+        $\bar n_i$ 仍显著偏离 $\tfrac12$ (大致 $|\bar n_i-\tfrac12|\gtrsim0.1$),
+        恢复的 ML 判据有效 (第 3 问已证 ``翻 $|b_i-\bar n_i|$ 最大的位'' 即 ML 最优)。
+  \item $\epsilon_{\text{eff}}\gtrsim1$ ($r_{\text{flip}}\gtrsim0.43$):
+        $\bar n_i$ 已接近 $\tfrac12$, 先验失效; 同时采样分布塌缩到 ``$\alpha,\beta$
+        各 $\sim N/2$'' 的随机合法组态, 主导组态权重 $\to0$。
+\end{itemize}
+\textbf{注}: $\epsilon_{\text{eff}}$ 在 ``$\ll1$'' 区与 ``每比特翻转概率'' 数值相近
+(差 $O(\epsilon_{\text{eff}}^2)$), 题面公式用作 ``每比特翻转概率'' 的工程代理;
+在 ``$\gtrsim1$'' 区 $\epsilon_{\text{eff}}$ 已饱和 (作为 ``失效指标'' 仍单调,
+只是不再线性对应翻转概率)。本文阈值取 $\epsilon_{\text{eff}}=1$ 与第 3 问
+``$p^\star\approx0.5$'' 的判据一致 (那里 $r_{\text{flip}}\to0.5$ 对应 $\bar n_i\to0.5$)。
+对 LiH LUCJ 电路 ($N_{2q}{=}3764$, $N_{1q}{=}17\,510$, $p_{1q}{=}0.1\,p_{2q}$),
+\[
+  \epsilon_{\text{eff}}=1\;\Longleftrightarrow\;
+  p_{2q}\cdot3764+p_{1q}\cdot17510=2
+  \;\Longleftrightarrow\;
+  p_{2q}\bigl(3764+0.1\cdot17510\bigr)=2,
+\]
+\[
+  \boxed{\;p_{2q}^{\star}\;\approx\;\frac{2}{3764+1751}
+        \;\approx\;3.6\times10^{-4}\;\approx\;4\times10^{-4}.\;}
+\]
+即 \textbf{两比特门错误率 $\gtrsim4{\times}10^{-4}$ 时, LiH 12-qubit LUCJ 电路的
+配置恢复失效}。题面 $p_{2q}{=}0.01$ 是该阈值的 $\sim 28$ 倍, 故原始电路需借助
+\emph{错误缓解 / 电路削减 / 拓扑优化}才能保留恢复能力。这与 SQD 文献
+(arXiv:2405.05068) 报告的 ``NISQ 设备上对 $\sim$10-qubit 体系恢复仍有效'' 的经验
+一致: 那里用了 \emph{浅化电路} (减少 $N_{2q}$) 与 \emph{dynamical decoupling}
+(降低有效 $p_{2q}$) 把 $\epsilon_{\text{eff}}$ 压到 $\lesssim1$。
+
+\section{NISQ $p_{2q}{\sim}0.01$ 下电路深度 vs 恢复能力的权衡}
+\textbf{核心矛盾}: LUCJ 的精度随 UCJ 层数 $L$ 增加而提升 (CCSD 振幅表达更完整),
+但 $N_{2q}\propto L$ 增大 $\Rightarrow$ $\epsilon_{\text{eff}}\propto L\,p_{2q}$ 增大,
+恢复能力下降。对 LiH ($L{=}16$, $N_{2q}\approx3780$):
+\begin{center}
+\begin{tabular}{c|ccc}
+$L$ (UCJ 层) & $N_{2q}\approx$ & $\epsilon_{\text{eff}}(p_{2q}{=}0.01)$ &
+状态 \\
+\hline
+$1$  & $\sim 235$ & $\sim 2.0$ & 边缘 (恢复仍部分有效) \\
+$4$  & $\sim 940$ & $\sim 7$ & 恢复失效 \\
+$16$ & $\sim 3760$ & $\sim 28$ & 完全失效
+\end{tabular}
+\end{center}
+要使 $\epsilon_{\text{eff}}\le1$ 在 $p_{2q}{=}0.01$ 下成立, 需 $N_{2q}\lesssim100$
+($L\lesssim0.5$ 层, 即电路退化为几乎纯 HF 制备)。
+\textbf{这解释了为何 LUCJ 论文里硬件实验用 ``1-2 层 + 局域化''}:
+\begin{itemize}
+  \item $L$ 小 $\to$ $N_{2q}$ 小 $\to$ $\epsilon_{\text{eff}}\lesssim1$ $\to$ 恢复有效;
+  \item 但 $L$ 小 $\to$ ansatz 表达力弱 $\to$ 理想态偏离 CCSD。
+\end{itemize}
+最优 $L^\star$ 是 ``ansatz 误差'' (随 $L$ $\downarrow$) 与 ``恢复-失效误差''
+(随 $L$ $\uparrow$, 因 $\epsilon_{\text{eff}}\uparrow$) 的交叉点, 形如
+\[
+  E_{\text{total}}(L)\;=\;\underbrace{E_{\text{ansatz}}(L)}_{\searrow}
+                       +\underbrace{E_{\text{noise}}(\epsilon_{\text{eff}}(L))}_{\nearrow},
+  \qquad L^\star=\arg\min_L E_{\text{total}}.
+\]
+对当前 12-qubit LiH、$p_{2q}{=}0.01$, $L^\star\sim1$; 若硬件改进到
+$p_{2q}{\sim}10^{-3}$, $\epsilon_{\text{eff}}$ 在 $L{=}16$ 时仍 $\sim2.8$, 需进一步
+降到 $p_{2q}{\sim}10^{-4}$ 才能让 $L{=}16$ 的完整 UCJ 电路进入恢复有效区。
+\textbf{因此 ``量子优势'' 的硬件门槛大致是 $p_{2q}\lesssim10^{-4}$} (对
+$\sim$10--20-qubit 化学 ansatz)。
+
+\subsection*{为何 $p_{2q}$ 而非 $p_{1q}$ 主导?}
+$\epsilon_{\text{eff}}=(p_{2q}N_{2q}+p_{1q}N_{1q})/2$ 中, 即便
+$p_{1q}{=}0.1\,p_{2q}$ 但 $N_{1q}/N_{2q}\approx 4.7$, 二者贡献比
+$\sim p_{2q}N_{2q}:p_{1q}N_{1q}\approx1:0.47$。两比特门贡献仍占 $\sim2/3$,
+是 NISQ 误差预算的瓶颈 --- 这正是为何 NISQ 路线图优先攻 \textbf{两比特门保真度}。
+
+\section*{代码与结果}
+见 \texttt{solution.py}。流程:
+\begin{enumerate}
+  \item PySCF 算 LiH/STO-3G 的 RHF + MO 积分; CCSD 取 $t_1,t_2$ 振幅。
+  \item \texttt{ffsim.UCJOpSpinBalanced.from\_t\_amplitudes} 构造 UCJ 算符,
+        \texttt{qiskit} 拼电路并 \texttt{decompose(reps=6)} 到 $\{u,\text{CNOT}\}$,
+        数 $N_{2q},N_{1q}$ (\texttt{count\_gates})。
+  \item \texttt{Statevector.sample\_counts} 取无噪理想 counts 作为 ``真值分布'',
+        由其计算 $\bar n_i$ 作为恢复先验。
+  \item 噪声注入: 把理想分布展开成 $S$ 个原始 bitstring, 对每位 iid 翻转概率
+        $\epsilon_{\text{flip}}=\min(\epsilon_{\text{eff}},0.5)$, 得噪声样本
+        (代码同时支持 \texttt{qiskit\_aer} 的真实 depolarizing 模型, 若已安装)。
+  \item 对比 \texttt{tc\_sqd.compute\_ground\_state\_energy} 在
+        (a) 直接喂噪声样本 (无恢复)、(b) 先 \texttt{recover\_configurations} 再喂
+        (有恢复) 下的能量, 并记录 $P_{\text{valid}}$ (合法样本比例)。
+  \item 扫描 $p_{2q}\in[10^{-4},10^{-1}]$, 对每个 $p_{2q}$ 计算
+        $\epsilon_{\text{eff}}$, 输出 $\epsilon_{\text{eff}}=1$ 阈值
+        $p_{2q}^{\star}\approx3.6{\times}10^{-4}$。
+\end{enumerate}
+验证结果 ($S{=}3000$, seed$=$42):
+\begin{itemize}
+  \item $N_{2q}\approx3764$ (CNOT), $N_{1q}\approx17\,510$ ($u$), 深度 $\approx2920$,
+        UCJ 层 $L=16$, 12 qubit。
+  \item $\epsilon_{\text{eff}}(p_{2q}{=}0.01,p_{1q}{=}0.001)\approx 27.6\gg1$。
+  \item 低噪声区 ($\epsilon_{\text{flip}}\lesssim0.02$) 恢复与无恢复能量差异在
+        采样涨落量级 ($|\Delta E|\lesssim 10^{-4}$), 二者都贴近理想 SQD;
+        高噪声区 ($\epsilon_{\text{flip}}\gtrsim0.05$) 二者皆 $\to$ FCI
+        (Hamiltonian 投影接管降噪)。$P_{\text{valid}}$ 随 $\epsilon_{\text{flip}}$
+        单调下降 ($1.0\to0.085$), 反映粒子数违例随噪声上升。
+  \item 恢复失效阈值 $p_{2q}^{\star}\approx3.6{\times}10^{-4}$ (对应 $\epsilon_{\text{eff}}=1$)。
+\end{itemize}
+\textbf{结论}: 在题面 $p_{2q}{=}0.01$ 下, LiH 12-qubit LUCJ 电路的电路级错误预算
+$\epsilon_{\text{eff}}\approx28$ 远超恢复阈值, 原始采样恢复失效; SQD 能量仍近 FCI 是
+Hamiltonian 投影的 ``降噪'' 副作用, 并不代表采样分布有意义。要让配置恢复真正发挥
+``从噪声中重建物理组态'' 的作用, 需 $p_{2q}\lesssim4{\times}10^{-4}$ 或显著浅化电路
+($L\lesssim1$)。
+\end{document}

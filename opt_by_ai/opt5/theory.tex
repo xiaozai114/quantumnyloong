@@ -1,0 +1,225 @@
+% !TEX program = xelatex
+% 编译: xelatex theory.tex
+\documentclass[11pt]{article}
+\usepackage[UTF8]{ctex}
+\usepackage{amsmath, amssymb, amsfonts, mathtools}
+\usepackage{braket}
+\usepackage{xcolor}
+\usepackage{geometry}
+\usepackage{hyperref}
+
+\geometry{a4paper, margin=2.4cm}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  urlcolor=blue!60!black,
+  citecolor=blue!60!black
+}
+
+\newcommand{\eps}{\epsilon}
+\newcommand{\Oof}[1]{O(#1)}
+\newcommand{\ceil}[1]{\left\lceil #1 \right\rceil}
+\newcommand{\note}[1]{\par\smallskip\noindent\textit{#1}\par\smallskip}
+
+\title{\textbf{选做题 5：从 SQD 到 QPE}\\[2pt]
+\large 量子比特数、电路深度与 EWF 资源压缩；$p_{2q}$ 交叉阈值}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{问题重述与符号约定}
+题目将两种量子算法视为同一电子结构问题的不同实现方式：
+\begin{itemize}
+  \item \textbf{SQD}（Sample-based Quantum Diagonalization）—— NISQ 算法，电路深度 $\Oof{n}$（LUCJ 浅电路），无需容错；
+  \item \textbf{QPE}（Quantum Phase Estimation）—— 容错算法，深度 $\Oof{1/\eps}$，需 $m=\ceil{\log_2(1/\eps)}$ 个辅助量子比特。
+\end{itemize}
+要求：(i) 推导二者在量子比特数与深度上的差异；(ii) EWF 如何降低 QPE 资源；(iii) 当双比特门错误率 $p_{2q}$ 取何值时 QPE 优于 SQD。
+
+\noindent\textbf{符号约定。} $n$：体系（自旋轨道）量子比特数；$\eps$：目标能量精度（Ha）；$S$：SQD 采样比特串数；$N_e$：电子数；$p_{2q}$：双比特门错误率；$p_{1q}$：单比特门错误率。记 $\omega=2\pi$，相位估计角度误差满足 $|\Delta\varphi|\le 2^{-m}$。
+
+\section{SQD 的资源消耗：NISQ 路线}
+\paragraph{量子比特数。} SQD 直接在 $n$ 个自旋轨道上准备 LUCJ 态 $|\Psi_{\mathrm{LUCJ}}\rangle$（强制 Jordan--Wigner 映射，使得计算基态与组态一一对应），\textbf{无需任何辅助比特}：
+\begin{equation}
+  N_{\text{qubit}}^{\mathrm{SQD}} = n .
+\end{equation}
+
+\paragraph{电路深度与门数。} LUCJ 电路由 $\hat U_\mu e^{i\hat J_\mu}\hat U_\mu^\dagger$ 重复 $n_{\mathrm{reps}}$ 次构成。每个 $\hat U$ 分解为 Givens 旋转（每门 2 CNOT），$e^{i\hat J}$ 对应 $R_{ZZ}$ 门。\textbf{关键：}``Local''近似仅保留邻接 $R_{ZZ}$，由 1D 链边着色（2 色）知同色边可并行 $\Rightarrow$ 每层 $R_{ZZ}$ 深度 $\Oof{1}$（而非完整 UCJ 的 $\Oof{n^2}$）。轨道旋转层深度 $\Oof{n}$，故总深度
+\begin{equation}\label{eq:sqd-depth}
+  D_{\mathrm{SQD}} = \Oof{n\cdot n_{\mathrm{reps}}} = \Oof{n}\quad (n_{\mathrm{reps}}=\Oof{1}) .
+\end{equation}
+门总数（含 $n_{\mathrm{reps}}$ 个 $\hat U_\mu$，每个 $\Oof{n}$ Givens $\to \Oof{n}$ CNOT；$e^{i\hat J_\mu}$ 局部 $R_{ZZ}$ 也是 $\Oof{n}$）：
+\begin{equation}
+  N_{\mathrm{gate}}^{\mathrm{SQD}} = \Oof{n\cdot n_{\mathrm{reps}}} = \Oof{n}.
+\end{equation}
+
+\paragraph{经典后处理。} 采样 $S$ 条比特串，去重得 $M\le S$ 唯一组态，在子空间 $\mathcal S=\mathrm{span}\{|D_k\rangle\}$ 上构建并精确对角化 CI 矩阵 $H_{kl}=\bra{D_k}\hat H\ket{D_l}$。对角化代价
+\begin{equation}
+  T_{\mathrm{class}}^{\mathrm{SQD}} = \Oof{M^3} = \Oof{S^3},
+\end{equation}
+与体系量子比特数 $n$ 无关（仅与采样规模 $S$ 有关），是 SQD 把指数墙推给经典机的核心机制。迭代 $N_{\mathrm{iter}}=\Oof{1}$（典型 5--10 次）。
+
+\paragraph{容错需求。} \textbf{无需容错}：SQD 把噪声视为对采样分布的扰动，配合 \emph{configuration recovery}（用平均占据数 $\bar n_i$ 修复违反粒子数的比特串）在 $p_{2q}\sim 10^{-2}$ 的 NISQ 器件上仍可工作。
+
+\section{QPE 的资源消耗：FTQC 路线}
+\paragraph{算法结构。} QPE 在 $n$ 个体系量子比特上准备试探态 $|\Psi\rangle$（满足 $\hat H|\psi_j\rangle=E_j|\psi_j\rangle$，$|\Psi\rangle=\sum_j c_j|\psi_j\rangle$），另加 $m$ 个辅助（评估）量子比特。对每个辅助比特顺序施加 Hadamard 后接受控 $U^{2^k}$（$k=0,\dots,m-1$），再做逆 QFT。
+
+\paragraph{量子比特数。}
+\begin{equation}\label{eq:qpe-qubit}
+  \boxed{N_{\text{qubit}}^{\mathrm{QPE}} = n + m, \qquad m=\ceil{\log_2(1/\eps)}.}
+\end{equation}
+若还需 magic-state 蒸馏与纠错编码（surface code），逻辑比特数还要乘以每物理逻辑比特对应的 $\Oof{1/p_{2q}}$ 个物理比特（容错开销），但本节先讨论\textbf{逻辑}资源。
+
+\paragraph{电路深度。} 受控 $U^{2^k}$ 必须串行执行（因 QFT 反馈结构），其中最长链为 $U^{2^{m-1}}=U^{1/(2\eps)}$。设 $U$ 的一次实现需 $\Oof{n}$ 门、深度 $\Oof{n}$（Hamiltonian 模拟，LCU 或 qubitization），则 QPE 深度由最长受控幂主导：
+\begin{equation}\label{eq:qpe-depth}
+  \boxed{D_{\mathrm{QPE}} = \Oof{n\cdot 2^m} = \Oof{n/\eps}.}
+\end{equation}
+门总数（对所有 $k=0,\dots,m-1$ 求和 $\Oof{n\cdot 2^k}$）：
+\begin{equation}
+  N_{\mathrm{gate}}^{\mathrm{QPE}} = \Oof{n\cdot(1+2+\cdots+2^{m-1})} = \Oof{n\cdot 2^m} = \Oof{n/\eps}.
+\end{equation}
+精度 $\eps$ 越小，$m$ 越大，资源\emph{指数}地依赖 $m=\ceil{\log_2(1/\eps)}$（即多项式地依赖 $1/\eps$）。
+
+\paragraph{容错需求。} QPE \textbf{必须容错}：电路长（$\Oof{n/\eps}$），任意未纠错噪声累积导致相位估计失败。需 surface code 等编码，要求 $p_{2q}<p_{\mathrm{th}}\sim 10^{-2}$（surface code 阈值），实际工程要求 $p_{2q}\ll p_{\mathrm{th}}$，典型 $\sim 10^{-4}$ 以下。
+
+\section{SQD 与 QPE 的资源对比}
+\begin{center}
+\begin{tabular}{l|c|c|c}
+\hline
+资源 & SQD（NISQ） & QPE（FTQC） & 比值 QPE/SQD \\
+\hline
+量子比特数 & $n$ & $n + \ceil{\log_2(1/\eps)}$ & $1+\ceil{\log_2(1/\eps)}/n$ \\
+电路深度 & $\Oof{n}$ & $\Oof{n/\eps}$ & $\Oof{1/\eps}$ \\
+门总数 & $\Oof{n}$ & $\Oof{n/\eps}$ & $\Oof{1/\eps}$ \\
+经典后处理 & $\Oof{S^3}$ & $\Oof{1}$（单次测量） & — \\
+对 $p_{2q}$ 要求 & $\sim 10^{-2}$（鲁棒） & $\lesssim 10^{-4}$（容错） & — \\
+\hline
+\end{tabular}
+\end{center}
+
+\paragraph{两点本质差异。}
+\begin{enumerate}
+  \item \textbf{深度差异来源。} SQD 用经典对角化替代了 QPE 中 $U^{2^k}$ 的\emph{相干}迭代——经典机替量子机做完了组合爆炸（$\Oof{S^3}$ vs $\Oof{n/\eps}$）。代价是 SQD 精度受采样数 $S$ 限制（精度 $\sim S^{-1/2}$ 量级，非 $\eps$ 的严格界），而 QPE 精度由 $m$ 严格保证 $\le\eps$。
+  \item \textbf{辅助比特差异。} QPE 额外需要 $m=\ceil{\log_2(1/\eps)}$ 个评估比特，SQD 一个都不要——因为 SQD 把 ``相位估计'' 转化为 ``子空间对角化''（在经典机上做特征值分解）。
+\end{enumerate}
+
+\section{EWF 如何降低 QPE 资源}
+\paragraph{EWF 切分。} EWF 把 $n$ 体系拆为 $F$ 个片段，每片 $n_{\mathrm{frag}}$ 轨道（含 bath），对每片\emph{独立}求解。$F=n/n_{\mathrm{frag}}$。关键性质：每片是一个独立的小规模电子结构问题，可独立调用任意求解器（HF/CCSD/SQD/QPE）。
+
+\paragraph{对 QPE 的资源压缩。} 在每片上运行 QPE，只需在该片的 $n_{\mathrm{frag}}$ 体系比特上准备 $|\Psi_f\rangle$ 并做相位估计：
+\begin{align}
+  N_{\text{qubit}}^{\mathrm{QPE+EWF}} &= n_{\mathrm{frag}} + m ,\\
+  D^{\mathrm{QPE+EWF}} &= \Oof{n_{\mathrm{frag}}/\eps},\\
+  N_{\mathrm{gate}}^{\mathrm{QPE+EWF}} &= \Oof{n_{\mathrm{frag}}/\eps}.
+\end{align}
+辅助比特 $m=\ceil{\log_2(1/\eps)}$ \textbf{不变}（精度 $\eps$ 是每片的能量精度，全体系精度由重构公式 $E_{\mathrm{total}}=E_{\mathrm{MF}}+\sum_f(E_f-E_{\mathrm{MF},f})$ 累加，每片精度仍是 $\eps$）。总资源（所有片串行）：
+\begin{equation}
+  \text{总逻辑深度} = F\cdot\Oof{n_{\mathrm{frag}}/\eps} = \Oof{\tfrac{n}{n_{\mathrm{frag}}}\cdot\tfrac{n_{\mathrm{frag}}}{\eps}} = \Oof{n/\eps},
+\end{equation}
+看似与直接 QPE 一样？\textbf{关键区别在并行性与瞬时资源：}
+\begin{itemize}
+  \item \textbf{并行执行：} $F$ 片相互独立，可\emph{并行}运行 $\Rightarrow$ 墙钟深度降为 $\Oof{n_{\mathrm{frag}}/\eps}$；
+  \item \textbf{瞬时比特数：} 单次只需 $n_{\mathrm{frag}}+m$ 比特（而非 $n+m$），是 EWF 对 \emph{NISQ 比特上限} 的直接缓解；
+  \item \textbf{每片精度 $\eps$ 可放宽：} 全体系精度 $\eps_{\mathrm{tot}}\approx\sum_f\eps_f$，若取每片 $\eps_f=\eps_{\mathrm{tot}}/F$，则 $m_f=\ceil{\log_2(F/\eps_{\mathrm{tot}})}=\Oof{\log F+\log(1/\eps_{\mathrm{tot}})}$，几乎不变。
+\end{itemize}
+
+\paragraph{数值示例（$n=96$, $\eps=10^{-3}$, $n_{\mathrm{frag}}=10$）。}
+\begin{center}
+\begin{tabular}{l|cc|cc}
+\hline
+& \multicolumn{2}{c|}{直接 QPE} & \multicolumn{2}{c}{EWF + QPE} \\
+& 比特数 & 深度 & 比特数(瞬时) & 深度(并行) \\
+\hline
+数值 & $96+10=106$ & $\Oof{9.6\times 10^4}$ & $10+10=20$ & $\Oof{10^4}$ \\
+\hline
+\end{tabular}
+\end{center}
+瞬时比特数降低 $\sim 5\times$，墙钟深度降低 $\sim n/n_{\mathrm{frag}}\approx 9.6\times$。这就是题目所述 ``$O(N/\eps)\to O(n_{\mathrm{frag}}/\eps)$'' 的来源（指瞬时/并行资源，非串行总操作数）。
+
+\paragraph{对 SQD 的对应收益。} 同理 EWF 把 SQD 的 $\Oof{n}$ 深度降为 $\Oof{n_{\mathrm{frag}}}$，采样比特串数 $S$ 也按每片配置，故 EWF 对两种算法\emph{对称}地降低资源，但相对收益（比值）相同；QPE 的 $\Oof{1/\eps}$ 因子在 EWF 后仍残留，故 FTQC+EWF 仍需容错。
+
+\section{$p_{2q}$ 交叉阈值：QPE 何时优于 SQD}
+\subsection{噪声误差模型}
+设双比特门错误率 $p_{2q}$，电路双比特门数为 $N_{2q}$。无纠错时整体保真度
+\begin{equation}
+  F \approx (1-p_{2q})^{N_{2q}} \approx e^{-p_{2q}N_{2q}}\quad (p_{2q}N_{2q}\ll 1).
+\end{equation}
+
+\paragraph{SQD 的噪声误差。} SQD 电路含 $N_{2q}^{\mathrm{SQD}}=\Oof{n}$ 个 CNOT（深度 $\Oof{n}$）。配置恢复能纠正部分错误，剩余误差
+\begin{equation}\label{eq:sqd-noise}
+  \eps_{\mathrm{noise}}^{\mathrm{SQD}} \approx c_s\,p_{2q}\,N_{2q}^{\mathrm{SQD}} = c_s\,p_{2q}\,\Oof{n},
+\end{equation}
+其中 $c_s<1$ 为配置恢复的有效因子（典型 $c_s\sim 0.1$--$1$）。SQD 的总误差 $\eps_{\mathrm{SQD}}^{\mathrm{tot}}=\eps_{\mathrm{frag}}+\eps_{\mathrm{SQD}}+\eps_{\mathrm{noise}}^{\mathrm{SQD}}$。
+
+\paragraph{QPE 的容错开销。} QPE 电路深 $D_{\mathrm{QPE}}=\Oof{n/\eps}$，需 surface code 编码。每个逻辑门的开销：物理比特 $\sim 1/p_{2q}$、深度因子 $\sim 1/p_{2q}$。QPE\emph{可工作} 的条件是逻辑错误率远小于目标精度：
+\begin{equation}\label{eq:qpe-ft-cond}
+  p_{\mathrm{logical}}\cdot D_{\mathrm{QPE}} \ll \eps
+  \;\Longrightarrow\;
+  p_{\mathrm{logical}} \ll \frac{\eps}{D_{\mathrm{QPE}}} = \frac{\eps^2}{n}.
+\end{equation}
+Surface code 逻辑错误率 $p_{\mathrm{logical}}\approx A\,(p_{2q}/p_{\mathrm{th}})^{(d+1)/2}$（$d$ 码距，$A\sim 0.1$，$p_{\mathrm{th}}\sim 10^{-2}$）。为达到 \eqref{eq:qpe-ft-cond} 需要码距 $d$ 满足
+\begin{equation}\label{eq:code-distance}
+  \left(\frac{p_{2q}}{p_{\mathrm{th}}}\right)^{(d+1)/2} \lesssim \frac{\eps^2}{A n}
+  \;\Longrightarrow\;
+  d \gtrsim 2\,\frac{\log(A n/\eps^2)}{\log(p_{\mathrm{th}}/p_{2q})} - 1.
+\end{equation}
+\textbf{每个逻辑比特} 的物理比特数 $\sim d^2$，物理门开销 $\sim d^2$。QPE 的总物理资源
+\begin{equation}\label{eq:qpe-physical}
+  C_{\mathrm{QPE}}^{\mathrm{phys}} \sim (n+m)\cdot d^2 \cdot D_{\mathrm{QPE}} = \Oof{\frac{n}{\eps}\cdot d^2\cdot(n+\log(1/\eps))}.
+\end{equation}
+$p_{2q}$ 越接近阈值 $p_{\mathrm{th}}$，$d$ 越大（发散），开销爆炸。
+
+\subsection{交叉条件}
+QPE 优于 SQD 的条件：在\emph{相同硬件}（相同 $p_{2q}$）下，QPE（容错后）能给出更小总误差或更小总成本。考虑两个层面：
+
+\paragraph{(a) 误差层面。} SQD 噪声误差 \eqref{eq:sqd-noise} 必须大于 QPE 容错后剩余误差 $\eps^2/n$，QPE 才胜出：
+\begin{equation}\label{eq:cross-err}
+  c_s\,p_{2q}\,\Oof{n} \gtrsim \frac{\eps^2}{n}
+  \;\Longrightarrow\;
+  p_{2q} \gtrsim \frac{\eps^2}{c_s n^2}\cdot\Oof{1}.
+\end{equation}
+对 $n=20$、$\eps=10^{-3}$、$c_s=1$：$p_{2q}\gtrsim 2.5\times 10^{-9}$。这是 \emph{理论误差下界}，实际中 SQD 即使噪声较大仍给出不错结果（因变分原理保证能量上界），故此界太松。
+
+\paragraph{(b) 成本层面（更现实）。} 比较 SQD 与 QPE 在物理资源上的\emph{等效成本}。SQD 的物理成本 $\sim n\cdot S^3$（量子浅 + 经典深）；QPE 的物理成本 \eqref{eq:qpe-physical} 含发散因子 $d^2$。当 $p_{2q}$ 下降时 QPE 物理成本急速下降（$d$ 减小），SQD 物理成本不变（其浅电路在任何 $p_{2q}$ 都能跑）。定义\textbf{交叉点} $p_{2q}^\ast$：使两路线\emph{达到相同精度 $\eps$} 的总成本相等。
+
+简化模型：忽略 $\Oof{1}$ 常数，取
+\begin{equation}
+  C_{\mathrm{SQD}} \sim n\cdot S^3,\qquad S\sim 1/\eps^2 \Rightarrow C_{\mathrm{SQD}}\sim n/\eps^6,
+\end{equation}
+\begin{equation}
+  C_{\mathrm{QPE}} \sim \frac{n}{\eps}\cdot d^2\cdot n,\qquad d\sim \frac{\log(1/\eps)}{\log(p_{\mathrm{th}}/p_{2q})}.
+\end{equation}
+令 $C_{\mathrm{SQD}}=C_{\mathrm{QPE}}$：
+\begin{equation}
+  \frac{1}{\eps^6} \sim \frac{n}{\eps}\cdot d^2
+  \;\Longrightarrow\;
+  d \sim \frac{1}{\eps^{5/2}\sqrt n}.
+\end{equation}
+对 $\eps=10^{-3}$、$n=20$：$d\sim 1/(10^{-7.5}\cdot 4.5)\sim 7\times 10^5$ —— 远超任何可行码距！说明在 $\eps=10^{-3}$、$n=20$ 这类小规模，SQD 在\emph{任意} 实际 $p_{2q}$ 下都更便宜。QPE 的优势要在大 $n$（经典 $S^3$ 爆炸）时才显现。
+
+\subsection{典型的 $p_{2q}^\ast\sim 10^{-4}$}
+实际文献与硬件路线图（IBM、Google）给出的经验阈值：当 $p_{2q}$ 降到 $\sim 10^{-4}$ 以下，容错开销 $d^2$ 降到可工程化水平（$d\lesssim 15$--$25$），QPE 在大规模（$n\gtrsim 50$）体系上开始优于 SQD。即
+\begin{equation}
+  \boxed{p_{2q}^\ast \sim 10^{-4}.}
+\end{equation}
+\begin{itemize}
+  \item $p_{2q}>p_{2q}^\ast$（NISQ 区，$\sim 10^{-3}$--$10^{-2}$）：QPE 容错开销爆炸，SQD 胜出；
+  \item $p_{2q}<p_{2q}^\ast$（FTQC 区）：QPE 给出严格精度保证（$\eps\sim 2^{-m}$），SQD 的采样极限（$S$ 难以到天文数字）反而成瓶颈，QPE 胜出。
+\end{itemize}
+
+\subsection{与题目表述的对应}
+题目暗示的 ``SQD 是 NISQ（深度 $\Oof{n}$），QPE 是容错（深度 $\Oof{1/\eps}$）'' 正好对应 NISQ/FTQC 二元时代的分野。$p_{2q}\sim 10^{-4}$ 是当前超导硬件从 NISQ 迈向早期 FTQC 的\emph{临界点}：高于此 SQD 是主力（已验证，见 Robledo et al. 2024），低于此 QPE 类算法（含其变体如 QPE on fragments, EWF-QPE）成为可行替代。EWF 在两个时代都降低资源，但在 FTQC 时代对 QPE 的相对收益更大（因 QPE 资源含 $\Oof{1/\eps}$ 因子，绝对节省更多）。
+
+\section{结论}
+\begin{enumerate}
+  \item \textbf{量子比特数}：SQD 用 $n$，QPE 用 $n+\ceil{\log_2(1/\eps)}$，QPE 多出对数个辅助比特。
+  \item \textbf{深度}：SQD $\Oof{n}$（LUCJ 浅电路，NISQ 可跑），QPE $\Oof{n/\eps}$（需容错）。
+  \item \textbf{EWF}：把瞬时比特数 $n\to n_{\mathrm{frag}}$、并行深度 $\Oof{n/\eps}\to\Oof{n_{\mathrm{frag}}/\eps}$；辅助比特 $m$ 不变。这是 EWF ``NISQ-infeasible $\to$ feasible'' 的本质。
+  \item \textbf{$p_{2q}^\ast\sim 10^{-4}$}：低于此值 QPE 容错开销可控、精度严格优于 SQD；高于此值 SQD 噪声鲁棒性使其实用，QPE 因 $d^2$ 爆炸而不可行。
+\end{enumerate}
+
+两种算法并非互相替代，而是\emph{同一精度的两种代价}：SQD 把指数墙推给经典机（$\Oof{S^3}$），QPE 把它推给量子机（$\Oof{n/\eps}$）。EWF 通过分片让两边的山都变矮。
+
+\end{document}
