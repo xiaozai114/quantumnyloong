@@ -1,6 +1,5 @@
 """
 Problem 3: QAOA for MaxCut Problem
-Tencent Sparking Program 2026 — Quantum Computing
 """
 import numpy as np
 from scipy.optimize import minimize

@@ -1,6 +1,5 @@
 """
 Problem 2: Breaking the Limits of SQD — SQD/EWF Implementation
-Tencent Sparking Program 2026 — Quantum Computing
 """
 import numpy as np
 from pyscf import gto, scf, fci
