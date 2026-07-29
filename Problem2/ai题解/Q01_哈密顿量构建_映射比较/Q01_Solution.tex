@@ -1,0 +1,339 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[UTF8]{ctex}
+\usepackage{amsmath,amssymb,bm}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{booktabs}
+\usepackage{enumitem}
+
+\title{Q01 解答：构建哈密顿量与映射比较}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+分子：(a) H$_2$ STO-3G（4 qubit）、(d) N$_2$ STO-3G（20 qubit）
+
+%% =====================
+\section{(a) 二次量子化哈密顿量}
+%% =====================
+
+用 PySCF 计算 H$_2$ 的 RHF，提取积分。
+
+\subsection{PySCF 提取积分}
+
+\begin{enumerate}[label=\arabic*.]
+  \item 定义分子：\texttt{gto.M(atom="H 0 0 0; H 0 0 0.74", basis="sto-3g")}
+  \item 跑 RHF：\texttt{scf.RHF(mol).kernel()} $\to$ 分子轨道、$E_{\text{HF}}$
+  \item 提取单电子积分 $h_{pq}$（动能 + 核引力）和双电子积分 $(pq|rs)$（电子排斥）
+  \item 核排斥能 $E_{\text{core}} = $ \texttt{mol.energy\_nuc()}
+\end{enumerate}
+
+\subsection{空间轨道 $\to$ 自旋轨道}
+
+H$_2$ 有 2 个空间轨道 $\to$ 4 个自旋轨道。排序 $(0\alpha, 1\alpha, 0\beta, 1\beta)$，对应 qubit $0,1,2,3$。
+
+自旋轨道积分构造规则：
+\begin{align}
+  h_{p\sigma,\, q\tau} &= \delta_{\sigma\tau}\, h_{pq} \label{eq:spin1}\\
+  (p\sigma\, q\tau | r\mu\, s\nu) &= \delta_{\sigma\mu}\, \delta_{\tau\nu}\, (pq|rs) \label{eq:spin2}
+\end{align}
+自旋正交性使 $h_{p\alpha,\, q\beta} = 0$（$p \neq q$ 时），很多积分天然为零。
+
+\subsection{二次量子化哈密顿量}
+
+\begin{equation}
+  \boxed{\;
+  \hat{H} = \sum_{pq} h_{pq}\, \hat{a}_p^\dagger \hat{a}_q
+  + \frac{1}{2}\sum_{pqrs} (pq\|rs)\, \hat{a}_p^\dagger \hat{a}_q^\dagger \hat{a}_s \hat{a}_r
+  + E_{\text{core}}\;}
+  \label{eq:H}
+\end{equation}
+
+其中 $(pq\|rs) = (pq|rs) - (pq|sr)$ 为反对称化积分，$p,q,r,s$ 遍历 4 个自旋轨道。
+
+参考值：$E_{\text{HF}} = -1.1167$ Ha，$E_{\text{FCI}} = -1.1373$ Ha，$E_{\text{core}} = 0.7199$ Ha。
+
+%% =====================
+\section{(b) $h_{01}\hat{a}_0^\dagger \hat{a}_1$ 的 JW 展开}
+%% =====================
+
+\subsection{JW 映射公式}
+
+\begin{equation}
+  \hat{a}_j^\dagger = \frac{\hat{X}_j - i\hat{Y}_j}{2}\prod_{k=0}^{j-1}\hat{Z}_k,
+  \qquad
+  \hat{a}_j = \frac{\hat{X}_j + i\hat{Y}_j}{2}\prod_{k=0}^{j-1}\hat{Z}_k
+  \label{eq:JW}
+\end{equation}
+
+其中 $\prod_{k<j}\hat{Z}_k$ 为 Jordan-Wigner 串（Z 串），保证费米子反对易性。
+
+\subsection{对 $j=0$ 和 $j=1$ 写出}
+
+\begin{align}
+  \hat{a}_0^\dagger &= \frac{\hat{X}_0 - i\hat{Y}_0}{2} \quad\text{（} j=0\text{，无 Z 串）} \\[6pt]
+  \hat{a}_1 &= \frac{\hat{X}_1 + i\hat{Y}_1}{2}\,\hat{Z}_0 \quad\text{（Z 串} = \hat{Z}_0\text{）}
+\end{align}
+
+\subsection{相乘}
+
+\begin{equation}
+  \hat{a}_0^\dagger \hat{a}_1
+  = \frac{1}{4}\,(\hat{X}_0 - i\hat{Y}_0)\;\hat{Z}_0\;(\hat{X}_1 + i\hat{Y}_1)
+  \label{eq:a0a1}
+\end{equation}
+
+\subsection{关键简化：Z 串被同 qubit 吸收}
+
+$(\hat{X}_0 - i\hat{Y}_0)$ 和 $\hat{Z}_0$ 作用在\textbf{同一个} qubit 0 上。利用 Pauli 乘法规则：
+\begin{equation}
+  \hat{X}\hat{Z} = -i\hat{Y}, \qquad \hat{Y}\hat{Z} = i\hat{X}
+\end{equation}
+
+逐项计算：
+\begin{align}
+  (\hat{X}_0 - i\hat{Y}_0)\,\hat{Z}_0
+  &= \hat{X}_0\hat{Z}_0 - i\,\hat{Y}_0\hat{Z}_0 \\
+  &= (-i\hat{Y}_0) - i\,(i\hat{X}_0) \\
+  &= -i\hat{Y}_0 + \hat{X}_0 \\
+  &= \hat{X}_0 - i\hat{Y}_0
+\end{align}
+
+Z 串被完全吸收，代回 \eqref{eq:a0a1}：
+
+\begin{equation}
+  \hat{a}_0^\dagger \hat{a}_1
+  = \frac{1}{4}(\hat{X}_0 - i\hat{Y}_0)(\hat{X}_1 + i\hat{Y}_1)
+\end{equation}
+
+\subsection{展开}
+
+\begin{align}
+  \hat{a}_0^\dagger \hat{a}_1
+  &= \frac{1}{4}\left[\hat{X}_0\hat{X}_1 + i\hat{X}_0\hat{Y}_1 - i\hat{Y}_0\hat{X}_1 - i^2\hat{Y}_0\hat{Y}_1\right] \\
+  &= \frac{1}{4}\left(\hat{X}_0\hat{X}_1 + i\hat{X}_0\hat{Y}_1 - i\hat{Y}_0\hat{X}_1 + \hat{Y}_0\hat{Y}_1\right)
+  \label{eq:expand}
+\end{align}
+
+\subsection{加上厄米共轭}
+
+哈密顿量是厄米的，hopping 项成对出现。计算 $\hat{a}_1^\dagger \hat{a}_0$（即 \eqref{eq:expand} 的厄米共轭，$i \to -i$）：
+
+\begin{equation}
+  \hat{a}_1^\dagger \hat{a}_0
+  = \frac{1}{4}\left(\hat{X}_0\hat{X}_1 - i\hat{X}_0\hat{Y}_1 + i\hat{Y}_0\hat{X}_1 + \hat{Y}_0\hat{Y}_1\right)
+\end{equation}
+
+相加，虚部消去：
+
+\begin{equation}
+  \hat{a}_0^\dagger \hat{a}_1 + \hat{a}_1^\dagger \hat{a}_0
+  = \frac{1}{4}\left(2\hat{X}_0\hat{X}_1 + 2\hat{Y}_0\hat{Y}_1\right)
+  = \frac{1}{2}\left(\hat{X}_0\hat{X}_1 + \hat{Y}_0\hat{Y}_1\right)
+\end{equation}
+
+\begin{equation}
+  \boxed{\;h_{01}\big(\hat{a}_0^\dagger \hat{a}_1 + \hat{a}_1^\dagger \hat{a}_0\big)
+  = \frac{h_{01}}{2}\big(\hat{X}_0\hat{X}_1 + \hat{Y}_0\hat{Y}_1\big)\;}
+\end{equation}
+
+\textbf{结论}：相邻 qubit 的 hopping 只有 $\hat{X}\hat{X}$ 和 $\hat{Y}\hat{Y}$，无 Z 串残留，weight = 2。
+
+若轨道不相邻（如 $\hat{a}_0^\dagger\hat{a}_3$），Z 串不被吸收：
+\begin{equation}
+  \hat{a}_0^\dagger\hat{a}_3 + \hat{a}_3^\dagger\hat{a}_0
+  = \frac{1}{2}\big(\hat{X}_0\hat{X}_3\hat{Z}_1\hat{Z}_2 + \hat{Y}_0\hat{Y}_3\hat{Z}_1\hat{Z}_2\big),
+  \quad\text{weight} = 4
+\end{equation}
+
+%% =====================
+\section{(c) H$_2$ 的 Pauli 项数与最大权重}
+%% =====================
+
+\subsection{按类型分类}
+
+将 H$_2$（4 qubit）哈密顿量展开为 Pauli string，按类型统计：
+
+\begin{center}
+\begin{tabular}{llccc}
+  \toprule
+  类型 & 来源 & 例子 & 数量 & 权重 \\
+  \midrule
+  常数项 & $E_{\text{core}}$ + $\sum h_{pp}/2$ + 两体对角 & $c_0\hat{I}$ & 1 & 0 \\
+  单 $\hat{Z}$ & $\hat{n}_p = (\hat{I}-\hat{Z}_p)/2$ & $\hat{Z}_0,\hat{Z}_1,\hat{Z}_2,\hat{Z}_3$ & 4 & 1 \\
+  双 $\hat{Z}$ & Coulomb 积分 $(pp|qq)$ 型 & $\hat{Z}_0\hat{Z}_1,\hat{Z}_0\hat{Z}_2,\ldots$ & 6 & 2 \\
+  hopping（同自旋） & $h_{01}(\hat{X}_0\hat{X}_1+\hat{Y}_0\hat{Y}_1)$ & $\hat{X}_0\hat{X}_1,\hat{Y}_0\hat{Y}_1$ & 4 & 2 \\
+  hopping（远端） & 带 Z 串 & $\hat{X}_0\hat{X}_3\hat{Z}_1\hat{Z}_2$ 等 & 2--4 & 3--4 \\
+  \midrule
+  \multicolumn{3}{l}{\textbf{总计}} & $\approx 15$ & $\max = 4$ \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{JW vs Parity}
+
+\begin{center}
+\begin{tabular}{lcc}
+  \toprule
+  & JW & Parity \\
+  \midrule
+  Pauli 项数 & $\approx 15$ & $\approx 15$ \\
+  最大权重 & 4 & 4 \\
+  串类型 & Z 串（向左，$k<j$） & X 串（向右，$k>j$） \\
+  数算符 & $(\hat{I}-\hat{Z}_j)/2$ & $(\hat{I}-\hat{Z}_{j-1}\hat{Z}_j)/2$ \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{结论}：H$_2$ 太小，两种映射的项数和最大权重相同——区别要到更大分子才显现。
+
+%% =====================
+\section{(d) $\mathbb{Z}_2$ 对称性约化：4 $\to$ 2 qubit}
+%% =====================
+
+\subsection{对称算符}
+
+自旋轨道排序 $(0\alpha, 1\alpha, 0\beta, 1\beta)$，qubit 0,1 为 $\alpha$，qubit 2,3 为 $\beta$。
+
+JW 下 $\hat{n}_p = (\hat{I}-\hat{Z}_p)/2$，故 $1-2\hat{n}_p = \hat{Z}_p$。对称算符：
+\begin{align}
+  \hat{S}_\alpha &= (-1)^{N_\alpha} = \prod_{p\in\alpha}(1-2\hat{n}_p) = \hat{Z}_0\hat{Z}_1 \\
+  \hat{S}_\beta &= (-1)^{N_\beta} = \prod_{p\in\beta}(1-2\hat{n}_p) = \hat{Z}_2\hat{Z}_3
+\end{align}
+
+验证 $\mathbb{Z}_2$ 性质：$\hat{S}_\alpha^2 = (-1)^{2N_\alpha} = 1$；$[\hat{S}_\alpha, \hat{H}] = 0$（$\hat{H}$ 守恒 $N_\alpha$）。
+
+\subsection{验证本征值}
+
+$N_\alpha = 1 \Rightarrow n_0 + n_1 = 1$，恰好一个 $\alpha$ 轨道被占据：
+
+\begin{center}
+\begin{tabular}{ccccc}
+  \toprule
+  $n_0$ & $n_1$ & $\hat{Z}_0 = 1-2n_0$ & $\hat{Z}_1 = 1-2n_1$ & $\hat{Z}_0\hat{Z}_1$ \\
+  \midrule
+  1 & 0 & $-1$ & $+1$ & $-1$ \\
+  0 & 1 & $+1$ & $-1$ & $-1$ \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+两种情况均得 $\hat{Z}_0\hat{Z}_1 = -1$。同理 $\hat{Z}_2\hat{Z}_3 = -1$（$N_\beta=1$）。
+
+\subsection{约化原理}
+
+$\hat{Z}_0\hat{Z}_1 = -1$ 恒成立 $\Rightarrow$ $\hat{Z}_1 = -\hat{Z}_0$。qubit 1 被 qubit 0 完全决定，冗余可消。
+
+同理 $\hat{Z}_3 = -\hat{Z}_2$，消去 qubit 3。
+
+每个独立 $\mathbb{Z}_2$ 对称性给出一个约束方程 $\to$ 消去 1 个 qubit。
+
+\subsection{数算符的约化}
+
+\begin{align}
+  \hat{n}_0 &= \frac{\hat{I}-\hat{Z}_0}{2} \quad\text{（不变）} \\
+  \hat{n}_1 &= \frac{\hat{I}-\hat{Z}_1}{2} = \frac{\hat{I}+\hat{Z}_0}{2} = \hat{I} - \hat{n}_0 \\
+  \hat{n}_2 &= \frac{\hat{I}-\hat{Z}_2}{2} \quad\text{（不变）} \\
+  \hat{n}_3 &= \frac{\hat{I}-\hat{Z}_3}{2} = \frac{\hat{I}+\hat{Z}_2}{2} = \hat{I} - \hat{n}_2
+\end{align}
+
+物理含义：$n_0 + n_1 = 1$，知道 $n_0$ 就知道 $n_1$。
+
+\subsection{hopping 项的约化}
+
+原始 hopping：
+\begin{equation}
+  h_{01}\big(\hat{a}_0^\dagger\hat{a}_1 + \hat{a}_1^\dagger\hat{a}_0\big)
+  = \frac{h_{01}}{2}\big(\hat{X}_0\hat{X}_1 + \hat{Y}_0\hat{Y}_1\big)
+\end{equation}
+
+在对称 sector 内做 tapering，消去 qubit 1：
+\begin{equation}
+  \hat{X}_0\hat{X}_1 + \hat{Y}_0\hat{Y}_1 \;\longrightarrow\; 2\hat{X}_0
+\end{equation}
+
+hopping 项只作用在 qubit 0 上：$h_{01}\hat{X}_0$。同理 $\beta$ 侧：$h_{01}\hat{X}_2$。
+
+\subsection{约化后的 2-qubit 哈密顿量}
+
+\begin{equation}
+  \boxed{\;
+  \hat{H}_{\text{red}} = c_0\hat{I} + c_1\hat{Z}_0 + c_2\hat{Z}_2 + c_3\hat{Z}_0\hat{Z}_2 + c_4\hat{X}_0 + c_5\hat{X}_2\;}
+\end{equation}
+
+\begin{center}
+\begin{tabular}{lcc}
+  \toprule
+  & 约化前 & 约化后 \\
+  \midrule
+  qubit 数 & 4 & 2 \\
+  Pauli 项数 & $\approx 15$ & $\approx 6$ \\
+  最大权重 & 4 & 2 \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{JW vs Parity 在约化中的差异}
+
+JW 的对称算符 $\hat{Z}_0\hat{Z}_1$ 是多 qubit 算符，需要"发现"并做 tapering。
+
+Parity 映射中，最后一个 qubit 直接存储总奇偶性，在固定电子数的 sector 内是常数，可直接删除；中间 qubit 存 $\alpha/\beta$ 奇偶性，同理可删。
+
+\textbf{结论}：Parity 的 $\mathbb{Z}_2$ 对称性是内置的，约化更自然。
+
+%% =====================
+\section{(e) N$_2$（20 qubit）重复 (c)}
+%% =====================
+
+\subsection{N$_2$ 基本信息}
+
+\begin{center}
+\begin{tabular}{lc}
+  \toprule
+  量 & 值 \\
+  \midrule
+  空间轨道 & 10 \\
+  自旋轨道（qubit） & 20 \\
+  电子数 & 14（$N_\alpha = N_\beta = 7$） \\
+  FCI 维数 & $\binom{20}{14} = 38{,}760$ \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{JW 和 Parity}
+
+Pauli 项数：$O(N^4) \sim 10^4$。
+
+最大权重：最远 hopping $\hat{a}_0^\dagger \hat{a}_{19}$，Z 串覆盖 qubit $1$--$18$（18 个 $\hat{Z}$）加 $\hat{X}_0\hat{X}_{19}$（2 个 $\hat{X}$），总 weight = $18 + 2 = 20$。
+
+两种映射 max weight 均为 $\bm{20}$。
+
+%% =====================
+\section{进阶：BK 映射}
+%% =====================
+
+BK（Bravyi-Kitaev）用二叉树编码占据数和奇偶性，Z 串长度从 $O(n)$ 降为 $O(\log n)$。
+
+对 N$_2$（20 qubit）：
+\begin{equation}
+  \text{max weight} \approx \lceil\log_2 20\rceil + 2 = 5 + 2 = 7
+\end{equation}
+
+\begin{center}
+\begin{tabular}{lccc}
+  \toprule
+  映射 & max weight（N$_2$） & Z 串长 & 适用场景 \\
+  \midrule
+  JW & 20 & $O(n)$ & 教学、SQD \\
+  Parity & 20 & $O(n)$ & $\mathbb{Z}_2$ 约化 \\
+  BK & $\approx 7$ & $O(\log n)$ & VQE（浅线路） \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+线路深度降低约 3 倍（20 $\to$ 7）。
+
+\textbf{注}：SQD 不做期望值测量，max weight 不重要；VQE 需要逐 Pauli 项测量，max weight 直接决定测量线路深度，因此 BK 优势巨大。
+
+\end{document}

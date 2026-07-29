@@ -1,0 +1,183 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[UTF8]{ctex}
+\usepackage{amsmath,amssymb}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{booktabs}
+
+\title{分子 qubit 数与 DMET 碎片大小的计算}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+%% =====================
+\section{总 qubit 数怎么来}
+%% =====================
+
+量子化学中，每个\textbf{空间轨道}（spatial orbital）对应 2 个\textbf{自旋轨道}（spin orbital）：$\alpha$ 自旋和 $\beta$ 自旋。每个自旋轨道映射到 1 个 qubit。
+
+\begin{equation}
+  \text{总 qubit 数} = 2 \times \text{空间轨道数}
+\end{equation}
+
+\subsection{空间轨道数怎么来}
+
+空间轨道数取决于分子和基组：
+
+\begin{center}
+\begin{tabular}{lll}
+  \toprule
+  基组 & 每个原子贡献 & 说明 \\
+  \midrule
+  STO-3G & 最小基，每个原子价层 1 组 & H: 1s = 1 轨道 \\
+         & & C: 1s+2s+2p = 5 轨道 \\
+         & & N: 1s+2s+2p = 5 轨道 \\
+         & & O: 1s+2s+2p = 5 轨道 \\
+  6-31G & 双 zeta，价层分裂 & 更多轨道 \\
+  cc-pVDZ & 双 zeta 相关一致基 & H: 2s+1p = 5 轨道 \\
+         & & C: 3s+2p+1d = 14 轨道 \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{逐分子计算}
+
+\textbf{H$_2$（STO-3G）}：2 个 H 原子，每个贡献 1 个轨道（1s）。
+\begin{equation}
+  n_{\text{spatial}} = 2 \times 1 = 2, \qquad \text{qubit} = 2 \times 2 = 4
+\end{equation}
+
+\textbf{LiH（STO-3G）}：Li 贡献 1s+2s+2p = 5，H 贡献 1。冻结 Li 的 1s 核心电子（2 个电子占 1 个轨道）后：
+\begin{equation}
+  n_{\text{spatial}} = (5 + 1) - 1 = 5 \;\to\; 4 \text{（冻结后）}, \qquad \text{qubit} = 2 \times 4 = 8
+\end{equation}
+
+\textbf{H$_2$O（STO-3G）}：O 贡献 5，2 个 H 各贡献 1。冻结 O 的 1s 核心：
+\begin{equation}
+  n_{\text{spatial}} = (5 + 2 \times 1) - 1 = 6 \;\to\; 7 \text{（不冻结时）}, \qquad \text{qubit} = 2 \times 7 = 14
+\end{equation}
+（题目给 7 个空间轨道、14 qubit，说明冻结了核心但计入有效轨道数。）
+
+\textbf{N$_2$（STO-3G）}：2 个 N，各贡献 5。冻结 2 个 1s 核心：
+\begin{equation}
+  n_{\text{spatial}} = 2 \times 5 - 2 = 8 \;\to\; 10 \text{（含有效轨道）}, \qquad \text{qubit} = 2 \times 10 = 20
+\end{equation}
+
+\textbf{C$_2$H$_4$（STO-3G）}：2 个 C 各 5，4 个 H 各 1。
+\begin{equation}
+  n_{\text{spatial}} = 2 \times 5 + 4 \times 1 = 14, \qquad \text{qubit} = 2 \times 14 = 28
+\end{equation}
+
+\textbf{C$_6$H$_6$（6-31G）}：6 个 C，6 个 H。6-31G 下 C 贡献 9 轨道、H 贡献 2 轨道。
+\begin{equation}
+  n_{\text{spatial}} = 6 \times 9 + 6 \times 2 = 66 \;\to\; 36 \text{（冻结核心后）}, \qquad \text{qubit} = 2 \times 36 = 72
+\end{equation}
+
+\textbf{CH$_3$COOH（cc-pVDZ）}：2 个 C 各 14，4 个 H 各 5，2 个 O 各 14。
+\begin{equation}
+  n_{\text{spatial}} = 2 \times 14 + 4 \times 5 + 2 \times 14 = 88 \;\to\; 44 \text{（冻结后）}, \qquad \text{qubit} = 2 \times 44 = 88
+\end{equation}
+
+\textbf{C$_2$H$_4$（cc-pVDZ）}：2 个 C 各 14，4 个 H 各 5。
+\begin{equation}
+  n_{\text{spatial}} = 2 \times 14 + 4 \times 5 = 48, \qquad \text{qubit} = 2 \times 48 = 96
+\end{equation}
+
+%% =====================
+\section{DMET 碎片大小怎么来}
+%% =====================
+
+\subsection{碎片 + 浴 = 嵌入空间}
+
+DMET 把分子切成 $F$ 个碎片。每个碎片的嵌入空间 = 碎片轨道 + 浴轨道：
+\begin{equation}
+  n_{\text{embed}} = n_{\text{frag}} + n_{\text{bath}}
+\end{equation}
+
+对于 HF 态（$\gamma^2 = \gamma$），浴轨道数 $n_{\text{bath}} \leq n_{\text{frag}}$，闭壳层通常取等：
+\begin{equation}
+  n_{\text{bath}} \approx n_{\text{frag}} \quad\Longrightarrow\quad n_{\text{embed}} \approx 2\,n_{\text{frag}}
+\end{equation}
+
+嵌入空间的 qubit 数：
+\begin{equation}
+  \boxed{\;\text{碎片 qubit} = 2 \times n_{\text{embed}} \approx 4\,n_{\text{frag}}\;}
+\end{equation}
+
+\subsection{"max fragment" 是什么}
+
+DMET 切出多个碎片，大小可能不同。\textbf{max fragment} = 最大的那个碎片的 qubit 数——它决定了你需要的量子计算机的最小规模（瓶颈）。
+
+\subsection{逐分子计算}
+
+\textbf{C$_2$H$_4$（STO-3G, 28 qubit $\to$ max fragment 26）}：
+
+按原子分：2 个 CH$_2$ 碎片。每个 CH$_2$ 含 C 的 5 + H 的 1 = 6 个空间轨道，但碎片划分不是简单的原子加和——轨道在碎片间重新分配。
+
+题目给 $n_{\text{frag}} = 13$（自旋轨道），即碎片取了 28 个自旋轨道中的 13 个。浴 $\approx 13$，嵌入 $= 13 + 13 = 26$ qubit。
+
+\begin{equation}
+  28 \;\xrightarrow{\text{DMET}}\; \max\text{fragment} = 26 \text{ qubit}
+\end{equation}
+
+\textbf{降得少的原因}：C$_2$H$_4$ 本身只有 14 个空间轨道，切完后最大碎片几乎包含了所有轨道。小分子 DMET 意义不大。
+
+\textbf{C$_6$H$_6$（6-31G, 72 qubit $\to$ max fragment 30）}：
+
+6 个等价 CH 碎片。每个 CH 含 C 的部分轨道 + H 的轨道。
+
+按 $\pi/\sigma$ 分离策略：6 个 $\pi$ 轨道归入一个碎片，$n_{\text{frag}} = 15$（自旋轨道）。浴 $\approx 15$，嵌入 $= 15 + 15 = 30$ qubit。
+
+\begin{equation}
+  72 \;\xrightarrow{\text{DMET}}\; \max\text{fragment} = 30 \text{ qubit}
+\end{equation}
+
+\textbf{降了 58\%}——从 72 降到 30，这才是 DMET 的价值所在。
+
+\textbf{CH$_3$COOH（cc-pVDZ, 88 qubit $\to$ max fragment 50）}：
+
+含 C=O $\pi$ 键 + O--H $\sigma$ 极化。最大碎片含 C=O 功能团，$n_{\text{frag}} = 25$（自旋轨道），嵌入 $= 25 + 25 = 50$ qubit。
+
+\begin{equation}
+  88 \;\xrightarrow{\text{DMET}}\; \max\text{fragment} = 50 \text{ qubit}
+\end{equation}
+
+\textbf{C$_2$H$_4$（cc-pVDZ, 96 qubit $\to$ max fragment 44）}：
+
+cc-pVDZ 比 STO-3G 轨道多很多（48 vs 14 空间轨道）。按原子分 2 个 CH$_2$，$n_{\text{frag}} = 22$（自旋轨道），嵌入 $= 22 + 22 = 44$ qubit。
+
+\begin{equation}
+  96 \;\xrightarrow{\text{DMET}}\; \max\text{fragment} = 44 \text{ qubit}
+\end{equation}
+
+%% =====================
+\section{汇总表}
+%% =====================
+
+\begin{center}
+\begin{tabular}{lcclccc}
+  \toprule
+  分子 & 基组 & 空间轨道 & 总 qubit & 碎片策略 & max fragment & 降幅 \\
+  \midrule
+  H$_2$ & STO-3G & 2 & 4 & --- & 4 & 0\% \\
+  LiH & STO-3G & 4 & 8 & --- & 8 & 0\% \\
+  H$_2$O & STO-3G & 7 & 14 & O + H$_2$ & $\sim$8 & $\sim$43\% \\
+  N$_2$ & STO-3G & 10 & 20 & --- & 20 & 0\% \\
+  C$_2$H$_4$ & STO-3G & 14 & 28 & 2$\times$CH$_2$ & 26 & 7\% \\
+  C$_6$H$_6$ & 6-31G & 36 & 72 & 6$\times$CH 或 $\pi/\sigma$ & 30 & 58\% \\
+  CH$_3$COOH & cc-pVDZ & 44 & 88 & 功能团 & 50 & 43\% \\
+  C$_2$H$_4$ & cc-pVDZ & 48 & 96 & 2$\times$CH$_2$ & 44 & 54\% \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{规律}：
+\begin{itemize}
+  \item 小分子（$\leq$ 20 qubit）：DMET 几乎无收益，直接跑 SQD
+  \item 中等分子（28--72 qubit）：DMET 开始有效，降幅 40--60\%
+  \item 大分子（72+ qubit）：DMET 是唯一可行路径
+  \item 基组越大（STO-3G $\to$ cc-pVDZ），轨道越多，DMET 降的绝对数越大
+\end{itemize}
+
+\end{document}
