@@ -543,3 +543,6 @@ Problem2/code/1a_phi1_count_physics.py
 
 # 完整版验证脚本（存档，不提交）
 Problem2/code/extras/
+
+#workbuddy 工作区
+*.workbuddy

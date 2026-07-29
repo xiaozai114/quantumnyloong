@@ -30,26 +30,36 @@ from common.circuits import bitrev
 # ── 电路资源统计（dry-run 用）──
 
 def circuit_resource_summary(c) -> Dict[str, int]:
-    """统计电路规模（比特数、CNOT 数、其余门数），供 dry-run 报告。
+    """统计电路规模（比特数、单比特门数、双比特及以上门数），供 dry-run 报告。
 
-    基于 OpenQASM 文本统计：qreg 行给比特数，cx 行给 CNOT 数。
+    直接遍历 TensorCircuit 原生门列表 ``c.to_qir()``：每个门的 ``index``
+    元组给出作用比特，按其长度分类（1=单比特，2=双比特，>2=多比特并入
+    n_2q）。避免依赖 ``to_openqasm``/``to_qiskit`` —— 后者在 qiskit>=1.0
+    下因 tensorcircuit 0.12.0 使用已移除的 ``qiskit.extensions`` 而报错。
     """
-    qasm = circuit_to_qasm(c)
-    nq, n1q, n2q = -1, 0, 0
-    skip = ("OPENQASM", "include", "qreg", "creg", "measure", "barrier", "//")
-    for line in qasm.splitlines():
-        s = line.strip()
-        if s.startswith("qreg"):
-            nq = int(s.split("[")[1].split("]")[0])
-        elif s.startswith(("cx ", "CX ")):
-            n2q += 1
-        elif s and not s.startswith(skip):
+    nq = getattr(c, "_nqubits", None)
+    if nq is None:
+        nq = c.circuit_param.get("nqubits", -1)
+    n1q, n2q = 0, 0
+    for g in c.to_qir():
+        idx = g.get("index", ()) or ()
+        k = len(idx)
+        if k <= 1:
             n1q += 1
-    return dict(nq=nq, n_1q=n1q, n_2q=n2q)
+        else:
+            # 双比特（cnot 等）与多比特块（LUCJ 'any'）统一计入 n_2q
+            n2q += 1
+    return dict(nq=int(nq), n_1q=n1q, n_2q=n2q)
 
 
 def circuit_to_qasm(c) -> str:
-    """将 TensorCircuit 电路导出为 OpenQASM 文本（TC 自带接口）。"""
+    """将 TensorCircuit 电路导出为 OpenQASM 文本（TC 自带接口）。
+
+    注意：tensorcircuit 0.12.0 的 ``to_openqasm`` 依赖 ``to_qiskit``，后者
+    在 qiskit>=1.0 环境下会因 ``qiskit.extensions`` 已被移除而失败。资源
+    统计已改走 ``circuit_resource_summary`` 的原生实现，不再依赖此函数；
+    仅在确有 QASM 文本需求且 qiskit<1.0 时可用。
+    """
     if hasattr(c, "to_openqasm"):
         return c.to_openqasm()
     raise RuntimeError("当前 TensorCircuit 版本不支持 to_openqasm")
