@@ -77,18 +77,18 @@ def sqd_energy(rep, lam, n_shots, method, seed=0, bitflip_noise=BITFLIP):
     return run_sqd_product(h1e, eri, nq, ecore, a, b, include=[hf_bs])["E_sqd"]
 
 
-def sqd_stats(rep, lam, n_shots, method, n_rep=50):
+def sqd_stats(rep, lam, n_shots, method, noise, n_rep=50):
     """跑 n_rep 次，返回 ΔE (mHa) 的 (均值, 最小值, 最大值)。"""
     e_fci = rep["E_FCI"]
-    dE = [(sqd_energy(rep, lam, n_shots, method, seed=s) - e_fci) * 1000
+    dE = [(sqd_energy(rep, lam, n_shots, method, seed=s, bitflip_noise=noise) - e_fci) * 1000
           for s in range(n_rep)]
     return float(np.mean(dE)), float(np.min(dE)), float(np.max(dE))
 
 
-def study(name, n_rep=50):
+def study(name, noise, n_rep=50):
     rep = molecule_report(name)
     print(f"{name}: nq={2*rep['norb']} E_FCI={rep['E_FCI']:.6f} "
-          f"(bitflip={BITFLIP})")
+          f"(bitflip={noise})")
 
     lam_grid = np.linspace(0.0, 1.0, 11)
     shots_grid = [50, 100, 200, 400, 800, 1500, 3000, 6000, 12000, 24000]
@@ -98,7 +98,7 @@ def study(name, n_rep=50):
 
     for method in METHODS:
         # 左：固定 n_shots=8000，扫 lam
-        st = np.array([sqd_stats(rep, lam, 8000, method, n_rep) for lam in lam_grid])
+        st = np.array([sqd_stats(rep, lam, 8000, method, noise, n_rep) for lam in lam_grid])
         lam_data[method] = st.tolist()
         m = st[:, 0]
         axL.plot(lam_grid, m, MARKERS[method] + "-", color=COLORS[method],
@@ -106,7 +106,7 @@ def study(name, n_rep=50):
         print(f"  [lam扫描] {method}: ΔE(λ=0)={m[0]:.2f}  ΔE(λ=1)={m[-1]:.2f} mHa")
 
         # 右：固定 lam=0.5，扫 n_shots
-        st = np.array([sqd_stats(rep, 0.5, ns, method, n_rep) for ns in shots_grid])
+        st = np.array([sqd_stats(rep, 0.5, ns, method, noise, n_rep) for ns in shots_grid])
         shots_data[method] = st.tolist()
         m = st[:, 0]
         axR.plot(shots_grid, m, MARKERS[method] + "-", color=COLORS[method],
@@ -116,29 +116,32 @@ def study(name, n_rep=50):
     axL.axhline(0, color="crimson", ls="--", lw=1)
     axL.set_xlabel("λ (CCSD 缩放因子)")
     axL.set_ylabel("ΔE = E$_{SQD}$−E$_{FCI}$ (mHa)")
-    axL.set_title(f"{name}：n_shots=8000, bitflip={BITFLIP}\n配置恢复方法对比（扫 λ）")
+    axL.set_title(f"{name}：n_shots=8000, bitflip={noise}\n配置恢复方法对比（扫 λ）")
     axL.legend(); axL.grid(alpha=.3)
 
     axR.axhline(0, color="crimson", ls="--", lw=1)
     axR.set_xscale("log")
     axR.set_xlabel("n_shots (对数轴)")
     axR.set_ylabel("ΔE = E$_{SQD}$−E$_{FCI}$ (mHa)")
-    axR.set_title(f"{name}：λ=0.5, bitflip={BITFLIP}\n配置恢复方法对比（扫 n_shots）")
+    axR.set_title(f"{name}：λ=0.5, bitflip={noise}\n配置恢复方法对比（扫 n_shots）")
     axR.legend(); axR.grid(alpha=.3, which="both")
 
     fig.tight_layout()
-    path = os.path.join(OUT, f"sqd_recovery_{name}.png")
+    path = os.path.join(OUT, f"sqd_recovery_{name}_noise{noise}.png")
     fig.savefig(path, dpi=150); plt.close(fig)
     print(f"  -> {path}")
 
     return dict(name=name, nq=2 * rep["norb"], E_HF=rep["E_HF"],
                 E_FCI=rep["E_FCI"], corr_mHa=(rep["E_FCI"] - rep["E_HF"]) * 1000,
-                bitflip=BITFLIP, lam_grid=lam_grid.tolist(),
+                bitflip=noise, lam_grid=lam_grid.tolist(),
                 shots_grid=shots_grid, lam_data=lam_data, shots_data=shots_data)
 
 
 if __name__ == "__main__":
-    results = {name: study(name) for name in ["LiH", "H2O"]}
+    results = {}
+    for noise in [0.01, 0.05]:
+        for name in ["LiH", "H2O"]:
+            results[f"{name}_noise{noise}"] = study(name, noise)
     with open(os.path.join(OUT, "recovery_results.json"), "w") as f:
         json.dump(results, f, indent=2)
     print("recovery_results.json saved")
