@@ -26,6 +26,15 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 plt.rcParams["font.sans-serif"] = ["PingFang SC", "Arial Unicode MS"]
 plt.rcParams["axes.unicode_minus"] = False
+# 字体加大、加粗、文字颜色加深（近纯黑）
+_DARK = "#111111"
+plt.rcParams.update({
+    "font.size": 14, "axes.titlesize": 16, "axes.labelsize": 15,
+    "xtick.labelsize": 13, "ytick.labelsize": 13, "legend.fontsize": 13,
+    "font.weight": "bold", "axes.labelweight": "bold", "axes.titleweight": "bold",
+    "text.color": _DARK, "axes.labelcolor": _DARK,
+    "xtick.color": _DARK, "ytick.color": _DARK, "axes.edgecolor": _DARK,
+})
 
 OUT = os.path.dirname(os.path.abspath(__file__))
 
@@ -65,7 +74,7 @@ def study(name, n_rep=50):
     rep = molecule_report(name)
     print(f"{name}: nq={2*rep['norb']} E_FCI={rep['E_FCI']:.6f}")
 
-    fig, (axL, axR) = plt.subplots(1, 2, figsize=(12, 4.6))
+    fig, (axL, axR) = plt.subplots(1, 2, figsize=(13, 5.2))
 
     # 左：固定 n_shots=8000，扫 lam ∈ [0,1]（步长 0.05）
     lam_grid = np.linspace(0.0, 1.0, 21)

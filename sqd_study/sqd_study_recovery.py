@@ -32,6 +32,24 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 plt.rcParams["font.sans-serif"] = ["PingFang SC", "Arial Unicode MS"]
 plt.rcParams["axes.unicode_minus"] = False
+# 字体加大、文字颜色加深（近纯黑）
+_DARK = "#111111"
+plt.rcParams.update({
+    "font.size": 14,
+    "axes.titlesize": 16,
+    "axes.labelsize": 15,
+    "xtick.labelsize": 13,
+    "ytick.labelsize": 13,
+    "legend.fontsize": 13,
+    "font.weight": "bold",
+    "axes.labelweight": "bold",
+    "axes.titleweight": "bold",
+    "text.color": _DARK,
+    "axes.labelcolor": _DARK,
+    "xtick.color": _DARK,
+    "ytick.color": _DARK,
+    "axes.edgecolor": _DARK,
+})
 
 OUT = os.path.dirname(os.path.abspath(__file__))
 
@@ -94,7 +112,7 @@ def study(name, noise, n_rep=50):
     shots_grid = [50, 100, 200, 400, 800, 1500, 3000, 6000, 12000, 24000]
 
     lam_data, shots_data = {}, {}
-    fig, (axL, axR) = plt.subplots(1, 2, figsize=(12, 4.8))
+    fig, (axL, axR) = plt.subplots(1, 2, figsize=(13, 5.4))
 
     for method in METHODS:
         # 左：固定 n_shots=8000，扫 lam
@@ -140,7 +158,7 @@ def study(name, noise, n_rep=50):
 if __name__ == "__main__":
     results = {}
     for noise in [0.01, 0.05]:
-        for name in ["LiH", "H2O"]:
+        for name in ["H2O"]:
             results[f"{name}_noise{noise}"] = study(name, noise)
     with open(os.path.join(OUT, "recovery_results.json"), "w") as f:
         json.dump(results, f, indent=2)
