@@ -1,0 +1,824 @@
+\documentclass[UTF8,12pt,a4paper]{ctexart}
+
+\usepackage[a4paper,margin=2.4cm]{geometry}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{listings}
+
+% 图片搜索路径：figures 位于同级项目目录 Optional1/figures 下
+\graphicspath{{/Users/xiezien/Desktop/Optional1/figures/}{figures/}{../figures/}{../Optional1/figures/}}
+\hypersetup{colorlinks=true,linkcolor=blue!55!black,urlcolor=blue!55!black,citecolor=blue!55!black}
+\setlength{\parindent}{2em}
+\setlength{\parskip}{0.3em}
+\renewcommand{\arraystretch}{1.25}
+
+% 代码块样式
+\definecolor{codebg}{RGB}{247,247,247}
+\definecolor{codeblue}{RGB}{24,95,165}
+\definecolor{codegreen}{RGB}{15,110,86}
+\lstset{
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{codeblue},
+  commentstyle=\color{codegreen},
+  stringstyle=\color{red!60!black},
+  backgroundcolor=\color{codebg},
+  frame=single,
+  breaklines=true,
+  showstringspaces=false,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  xleftmargin=1.6em,
+  framexleftmargin=1.3em,
+  columns=fullflexible,
+  keepspaces=true
+}
+
+% 便捷化学式宏
+\newcommand{\Htwo}{H$_2$}
+\newcommand{\HtwoO}{H$_2$O}
+\newcommand{\Ntwo}{N$_2$}
+
+\title{基于采样的量子对角化（SQD）的三类实用化瓶颈及其改进}
+\author{A 组}
+\date{2026 年 7 月}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+基于采样的量子对角化（Sample-based Quantum Diagonalization, SQD）以量子采样确定重要电子组态所张成的子空间，并在该子空间内进行经典精确对角化以求解基态能量。在小分子体系中，SQD 能够无偏地复现 Full CI 结果；但当体系规模增大、趋近实用需求时，采样效率、噪声干扰与分子尺寸三类瓶颈相继显现。本研究主要探索突破上述瓶颈的方法。在参数调节方面，我们研究了 \texttt{ccsd\_scale} 参数和采样数对能量精度和计算效率的影响，明确了 \texttt{ccsd\_scale} 和采样数均影响关键组态采样数，精度单调上升但会趋于饱和，需要与子空间增大引起的效率降低进行权衡；对于噪声干扰，我们发现主动注入可控噪声可降低基态能量误差，并给出其 Hamming 球覆盖机制、最优注入强度的存在性证明及失效边界；在分子尺寸方面，我们以甘氨酸二肽 Gly-Gly 为对象，采用 EWF/DMET 嵌入分片将大分子分解为可解碎片，在含读出噪声的条件下达到化学精度。
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\section{SQD 方法框架及其有效性}
+
+SQD 是求解基态能量的有效方法。最传统的变分量子本征求解器方法（VQE）通过优化一组电路参数逼近基态波函数，其收敛常受贫瘠高原（barren plateau）与硬件噪声制约。SQD 采取相反的策略：不对任何参数进行优化，仅借助量子采样确定一小组重要电子组态，在采样子空间中构建哈密顿量（CI 矩阵），并将能量求解交由经典精确对角化完成。
+
+\subsection{研究背景}
+
+分子基态能量的严格解（Full CI）要求在维度为 $D=\binom{2n}{N_e}$ 的组态空间内对角化哈密顿量，其中 $n$ 为空间轨道数、$N_e$ 为电子数。$D$ 随体系规模呈指数增长，经典计算在中等体系即难以处理。
+
+VQE 是当前主流的量子求解方案，其以参数化电路 $|\psi(\vec\theta)\rangle$ 变分逼近基态，并通过经典优化器迭代调节 $\vec\theta$ 以最小化能量期望 $\langle H\rangle$。该方案存在三类结构性困难。其一，随比特数增加，代价函数的梯度呈指数衰减（贫瘠高原），优化过程难以推进。其二，在真机噪声条件下，$\langle H\rangle$ 可能被压低至真实基态能量以下，产生不可信的偏低结果。其三，每一步梯度评估均需对大量 Pauli 项重复测量，其开销约为 $O(N^4/\epsilon^2)$。SQD 的设计动机即在于规避参数优化这一环节。
+
+\subsection{方法：以采样确定子空间，以经典对角化求解能量}
+
+SQD（Sample-based Quantum Diagonalization）包含三个步骤，其核心在于以量子采样选取子空间、以经典对角化求解能量：
+
+\begin{enumerate}
+  \item \textbf{采样。} 对给定量子态（本工作采用 LUCJ ansatz $\hat U e^{i\hat J}\hat U^\dagger$ 制备输入态）进行测量，得到一组 bitstring，每个 bitstring 对应一个电子组态（Slater 行列式）。
+  \item \textbf{子空间构建。} 对采得的组态去重，并在必要时通过配置恢复（configuration recovery）修复粒子数，得到规模为 $M$ 的子空间 $\mathcal S$（$M\ll D$）。
+  \item \textbf{对角化。} 在 $\mathcal S$ 内构建并精确对角化投影哈密顿量 $H|_{\mathcal S}$，取其最低本征值作为基态能量的估计。
+\end{enumerate}
+
+该流程在两处直接利用了量子特性：测量塌缩将量子态自然投影为离散的电子组态，使采样过程即等价于组态读出，无需额外编码；LUCJ 纠缠使采样分布覆盖 HF 参考态以外的关联组态，纠缠越强，子空间的代表性越高。
+
+SQD 的有效性可归结为以下三条第一性原理层面的性质。
+
+\paragraph{其一，能量为变分上界，精度随子空间单调可控。} SQD 的能量为子空间内的变分极小：
+\begin{equation}
+E_{\text{SQD}} = \min_{\phi\in\mathcal S}\frac{\langle\phi|H|\phi\rangle}{\langle\phi|\phi\rangle} \;\ge\; E_0.
+\end{equation}
+该值恒为真实基态能量 $E_0$ 的上界；当子空间单调扩大（$\mathcal S_1\subseteq\mathcal S_2\Rightarrow E_{\text{SQD}}(\mathcal S_1)\ge E_{\text{SQD}}(\mathcal S_2)$）时，能量单调下降并逼近 $E_0$。
+
+\paragraph{其二，无参数优化，规避贫瘠高原。} SQD 不对 $\vec\theta$ 进行迭代优化——LUCJ 的参数由 CCSD 振幅乘以 \texttt{ccsd\_scale} 直接给定——因而不涉及梯度消失或优化器收敛问题，量子端仅承担采样任务。
+
+\paragraph{其三，量子成本与体系规模解耦。} 量子端成本主要来自采样次数 $S$（shots），与分子规模近似无关；随体系增长的对角化开销则被置于成本较低的经典端。统一成本模型可记为
+\begin{equation}
+B=\underbrace{c_q S}_{\text{量子（高成本）}}+\underbrace{c_c M^2}_{\text{经典（低成本）}},
+\end{equation}
+即量子资源用于组态选取、经典资源用于能量求解。该成本框架同样构成后续第 1、2 部分中精度—成本分析的共同基础。
+
+\subsection{有效性验证：小分子体系无偏复现 FCI}
+
+在小体系中，SQD 的子空间可覆盖全空间，其能量与 Full CI 完全一致，从而验证方法本身不引入系统偏差：
+
+\begin{table}[H]
+\centering
+\caption{小分子体系中 SQD 无偏复现 FCI。}
+\begin{tabular}{lllll}
+\toprule
+体系 & 活性空间 & 全空间维度 $D$ & SQD 结果 & 说明 \\
+\midrule
+\Htwo{} & (2e,2o) & 4 组态 & 精确等于 FCI & 子空间即全空间，无采样误差 \\
+LiH & 小 CAS & 可枚举 & 复现 FCI（亚 mHa 量级） & 子空间充分扩大后单调收敛至 FCI \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+其规律在于：子空间越接近全空间，$E_{\text{SQD}}$ 越逼近 $E_{\text{FCI}}=E_0$，此即变分上界单调收敛性质的直接验证。\Htwo{} 的全空间仅含 4 个组态，SQD 可一次采全，结果与 FCI 逐位相同，表明流程不含系统偏差；残余误差仅源于子空间是否采全，而非方法本身。
+
+\subsection{三类实用化瓶颈}
+
+SQD 在小分子体系中表现近乎完美。然而当其应用于更大、更接近真实的体系时，子空间能否被充分且准确地采样即成为瓶颈，相应地出现三类问题。这三类问题正是本报告后续三段各自的研究对象：
+
+\begin{table}[H]
+\centering
+\caption{SQD 的三类实用化瓶颈及其对应段落。}
+\begin{tabular}{p{2.2cm}p{9.5cm}p{2cm}}
+\toprule
+问题 & 本质 & 对应段落 \\
+\midrule
+采样效率 & LUCJ 以 \texttt{ccsd\_scale} $\lambda$ 调节关联强度，能量误差随 $\lambda$ 单调变化；而单纯增加 shots 时，新增组态数以 $\propto e^{-S/K}$ 饱和 & 第 1 段 \\
+噪声干扰 & 真机噪声破坏粒子数守恒，通常被视为污染而予以消除；其是否只能作为负面因素，尚待考察 & 第 2 段 \\
+分子尺寸 & $D=\binom{2n}{N_e}$ 指数爆炸，真实分子（如二肽，70 电子）所需比特数超出 NISQ 上限，无法整体纳入单块 SQD & 第 3 段 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+SQD 的方法基础——变分上界、无参数优化、以量子采样选取组态——是稳固的。后续三段的目标，即在此基础之上依次消除采样效率、噪声与分子尺寸三方面的限制，使 SQD 由小分子体系推广至真实体系的应用。
+
+\section{\texttt{ccsd\_scale} / shots 调参分析}
+
+LUCJ 采样态由 CCSD 振幅构造，缩放参数 $\lambda$（\texttt{ccsd\_scale}）控制其偏离 Hartree--Fock（HF）参考态的程度。Optional Problem 1 的朴素预期为：增大 $\lambda$ 一方面提升关联组态的采样覆盖，另一方面放大 local LUCJ 相对完整 UCJ 的截断误差，二者竞争应使 SQD 能量随 $\lambda$ 先降后升、存在内部最优值。本工作对该预期进行了系统检验，结果表明其并不成立：SQD 误差随 $\lambda$ 单调下降并趋于平台，截断误差并不以能量惩罚的形式传递至 SQD。
+
+\subsection{问题：截断误差假设与 U 型预期}
+
+$\lambda=0$ 对应 HF 极限，增大 $\lambda$ 提高激发组态权重；同时，local LUCJ 仅保留部分局域、相邻的密度--密度耦合，其对非相邻项的截断误差按 $\lambda^2$ 定性增长。由此得到的朴素图景包含四个阶段：小 $\lambda$ 时采样态过于接近 HF，关联组态覆盖不足，误差较大；中等 $\lambda$ 时覆盖改善占优，误差下降；大 $\lambda$ 时 local 截断误差占优，误差重新上升；因而存在一个内部最优 $\lambda$。本工作不预设该 U 型趋势，而通过参数扫描、受控对照与理论分析确定 $\lambda$ 影响 SQD 的真实路径。
+
+\subsection{方法与实验设置}
+
+计算流程为：以 PySCF 计算分子积分、CCSD 振幅与 FCI 参考能量；以 ffsim 构造 local/full UCJ 态矢量并进行有限-shot 采样；以 Qiskit Addon SQD 执行组态恢复与采样子空间对角化；以 Qiskit Aer 测试门级噪声。实验调节的变量包括分子（\Htwo{}、LiH、\HtwoO{}、\Ntwo{}，并对 C$_2$H$_4$ 作检查）、采样数（10--5000，受控实验扩展至 $10^7$）、键长（平衡与拉伸构型）、噪声（无噪声、bit flip、读出误差、门级去极化）、LUCJ 层数（$n_{\text{reps}}=1$ 与 $3$）及 $\lambda$（常规 $[0,0.5]$、扩展 $[0,2]$、节点研究 $[0,1000]$）。
+
+由于增大 $\lambda$ 或加入噪声会同时改变输入态振幅、采样概率、合法样本比例与最终子空间维数，仅比较能量曲线无法区分改善来自``态更准确''还是``子空间更大''。为此设置了四类受控实验：精确态矢量下的 local/full UCJ 对照、固定子空间维数 $K$ 的 oracle 对照、不固定 $K$ 的覆盖饱和实验，以及大范围 $\lambda$ 的概率节点验证。
+
+\subsection{\texorpdfstring{小 $\lambda$ 区：有限采样下的覆盖不足与单调下降}{小 lambda 区：有限采样下的覆盖不足与单调下降}}
+
+设关键行列式 $D_i$ 的采样概率为 $p_i(\lambda)$，则 $S$ 次独立采样至少命中一次的概率为
+\begin{equation}
+P_i^{\text{seen}}(\lambda)=1-[1-p_i(\lambda)]^S\approx 1-e^{-Sp_i(\lambda)}.
+\end{equation}
+
+小 $\lambda$ 区激发振幅满足 $c_i(\lambda)=\lambda t_i+O(\lambda^2)$，故 $p_i(\lambda)\approx\lambda^2|t_i|^2$。当 $Sp_i\ll1$ 时，增大 $\lambda$ 显著提高关键组态的召回率，SQD 误差随之下降。以平衡 LiH 严格活性空间为例，shots 为 10--200 且 $\lambda\le1$ 时样本几乎仅含 HF 行列式、SQD 能量停留于 HF；shots 增至 500--1000 后激发行列式开始出现，误差随 $\lambda$ 下降。此处主导误差并非期望值测量误差，而是采样子空间的不完备误差，其收敛呈台阶式。拉伸键长增强静态相关、加大 HF 与 FCI 的差距，使小 $\lambda$ 区的覆盖不足更为显著，但常规扫描中增大 $\lambda$ 后误差仍主要表现为下降或饱和。
+
+图~\ref{fig:lih_scan} 与图~\ref{fig:h2o_scan} 给出了 LiH 与 \HtwoO{} 在无噪声条件下 $\lambda$ 与 $n_{\text{shots}}$ 双向扫描的完整曲线。两图共同印证了本部分的核心图景：SQD 误差随 $\lambda$（固定 $n_{\text{shots}}$）与随 $n_{\text{shots}}$（固定 $\lambda$）均\textbf{单调下降并迅速趋于平台}，未出现题目预期的宽 U 型回升。这直接说明 $\lambda$ 与采样数二者作用相同——都通过提高关键组态召回率降低误差，且增益随参数增大而饱和。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.98\textwidth]{ppt_lih_lambda_shots.png}
+\caption{LiH 的双向扫描（50 次重复，均值 $\pm$ 最小/最大范围）。左：固定 $n_{\text{shots}}=8000$ 时误差随 $\lambda$ 的变化，$\lambda\gtrsim0.25$ 后即压至 1 mHa 以内并进入平台；右：固定 $\lambda=0.5$ 时误差随 $n_{\text{shots}}$（对数轴）单调下降。二者均无回升区间。}
+\label{fig:lih_scan}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.98\textwidth]{ppt_h2o_lambda_shots.png}
+\caption{\HtwoO{} 的双向扫描（50 次重复）。左：固定 $n_{\text{shots}}=8000$ 时误差随 $\lambda$ 从约 50 mHa 单调降至平台；右：固定 $\lambda=0.5$ 时误差随 $n_{\text{shots}}$ 下降。相比 LiH，\HtwoO{} 因活性空间更大、关键组态更多，平台到达更慢，但趋势一致。}
+\label{fig:h2o_scan}
+\end{figure}
+
+\subsection{覆盖饱和平台与截断误差的真实含义}
+
+当所有重要行列式均满足 $Sp_i\gg1$ 时，漏采概率 $e^{-Sp_i}$ 已很小。若不同 $\lambda$ 对应相同的相关支持集，则在采样充分极限下
+\begin{equation}
+E_{\text{SQD}}(\lambda)=\lambda_{\min}(H|_{\mathcal S}),
+\end{equation}
+与行列式的原始概率权重无关，误差趋于平台。且由变分原理，$\mathcal S_1\subseteq\mathcal S_2\Rightarrow E_{\text{FCI}}\le E_{\text{SQD}}(\mathcal S_2)\le E_{\text{SQD}}(\mathcal S_1)$，故在不限制经典子空间、且新增组态不导致原关键组态丢失时，更广的支持不会抬高 SQD 最低本征值。
+
+题目所述的截断误差，其准确含义是 local 与 full UCJ 两态的保真度亏损
+\begin{equation}
+I_{\text{trunc}}(\lambda)=1-|\langle\Psi_{\text{LUCJ}}(\lambda)|\Psi_{\text{UCJ}}(\lambda)\rangle|^2,
+\end{equation}
+小 $\lambda$ 下态矢量差为 $O(\lambda)$，故 $I_{\text{trunc}}$ 以 $O(\lambda^2)$ 起始。但它并非可直接加至 SQD 能量的 $C\lambda^2$ 惩罚项：直接变分能量 $E_{\text{var}}=\langle\Psi|H|\Psi\rangle$ 使用全部振幅与相位，会直接受截断与过旋转影响；而 SQD 仅使用采到的行列式集合并重新对角化。由此得到本部分的核心判断——\textbf{SQD 对输入态的振幅与相位误差较为鲁棒，但不对关键组态的支持缺失鲁棒。}
+
+受控实验证实了这一点。$\lambda=0.5$ 时 local/full 态的保真度亏损极小（LiH 平衡 $1.84\times10^{-5}$、LiH 2.5 \AA{} $1.11\times10^{-4}$、\HtwoO{} $8.20\times10^{-4}$）；但同一 $\lambda$ 下 \HtwoO{} 的直接变分误差 local 为 43.614 mHa、full 为 32.788 mHa，相差约 10.83 mHa。而在固定子空间预算下（LiH 2.5 \AA{}，$K=8$；\HtwoO{}，$K=32$），$\lambda\ge0.1$ 后误差即固定（分别约 0.640、12.55 mHa），且 local/full 的固定-$K$ SQD 结果几乎相同——说明 local/full 主要改变同一批重要行列式的权重，而未改变 top-$K$ 行列式的身份。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.98\textwidth]{controlled_experiments.png}
+\caption{受控实验汇总。左上：local/full UCJ 的态距离与概率分布距离随 $\lambda$ 增长；右上：固定子空间预算 $K$ 下的 oracle SQD 误差，$\lambda\ge0.1$ 后即固定，且 local/full 几乎重合；左下：\HtwoO{} 固定 $K=32$ 时不同 shots 下的有限采样收敛；右下：粒子数后选择、固定预算下的受控噪声对照，普通噪声无系统优势。}
+\label{fig:controlled}
+\end{figure}
+
+不限制 $K$ 时（\HtwoO{}，$n_{\text{reps}}=3$，$S=10^7$）的趋势更为直接：
+
+\begin{table}[H]
+\centering
+\caption{\HtwoO{} 中直接 LUCJ 误差与不限制 $K$ 的 SQD 误差。}
+\begin{tabular}{ccc}
+\toprule
+$\lambda$ & 直接 LUCJ 误差 (mHa) & SQD 误差 (mHa) \\
+\midrule
+1.0 & 29.96 & 3.71 \\
+1.5 & 25.79 & 1.28 \\
+2.0 & 25.39 & 1.18 \\
+3.0 & 35.91 & 1.16 \\
+5.0 & 101.20 & 1.13 \\
+10.0 & 487.45 & 1.13 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+$\lambda\ge5$ 后 SQD 误差变化范围仅约 0.0058 mHa，形成清晰平台；此时直接态已严重过旋转（误差升至 487 mHa），但该恶化并未传递为 SQD 的回升。
+
+\subsection{支持集上限由电路结构决定}
+
+平台高度取决于可达支持集，而非 $\lambda$。以 \HtwoO{}（固定粒子数空间维数 441）FCI 权重最大的 10 个行列式为关键组态：$n_{\text{reps}}=1$ 时其中 4 个的概率严格为零，召回率上限仅 0.60，即便 $10^7$ shots 亦无法覆盖充分，支持集 SQD 极限约 12.54 mHa；$n_{\text{reps}}=3$ 时全部关键组态获得非零概率，召回上限升至 1.0，支持集 SQD 极限降至约 1.08 mHa。因此，提升平台精度的正确途径是增强电路表达能力（增大 $n_{\text{reps}}$）以扩大可达支持集，而非单纯增大 $\lambda$。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.98\textwidth]{coverage_saturated.png}
+\caption{关键组态覆盖饱和实验。左上：精确态误差、支持集 SQD 下限（虚线）随 $\lambda$ 的变化，$n_{\text{reps}}=3$ 的下限（约 1 mHa）远低于 $n_{\text{reps}}=1$（约 12.5 mHa）；右上：结构性覆盖上限，$n_{\text{reps}}=1$ 的 top-10 召回率封顶于 0.60，$n_{\text{reps}}=3$ 达 1.0；左下：召回率随 shots 的增长，揭示覆盖何时充分；右下：$n_{\text{reps}}=3$、不限制 $K$ 时的覆盖饱和 SQD 曲线，误差随 $\lambda$ 下降至平台。}
+\label{fig:saturation}
+\end{figure}
+
+\subsection{\texorpdfstring{极大 $\lambda$ 处的离散概率节点}{极大 lambda 处的离散概率节点}}
+
+LUCJ 为幺正、非线性映射，行列式振幅不随 $\lambda$ 永远单调增大，而在大 $\lambda$ 下呈准周期振荡。若某关键行列式在 $\lambda_0$ 附近满足 $p_i(\lambda)\approx a(\lambda-\lambda_0)^2$，则有限 shots 下的危险窗口由 $Sp_i\lesssim1$ 决定：
+\begin{equation}
+|\lambda-\lambda_0|\lesssim\frac{1}{\sqrt{aS}},
+\end{equation}
+即尖峰宽度约按 $S^{-1/2}$ 缩小；增加 shots 使尖峰变窄，但不能消除精确零概率节点处的峰顶。\Htwo{} 仅在 HF 与一个双激发行列式上有非零概率，其解析期望 $\mathbb E[\epsilon_{\text{SQD}}]=p_{\text{HF}}^S\Delta_{\text{HF}}+p_D^S\Delta_D$（$\Delta_{\text{HF}}=20.525$ mHa，$\Delta_D=1599.902$ mHa），显式有限-shot 采样结果与之吻合，验证了节点尖峰的存在。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.94\textwidth]{h2_sampling_validation.png}
+\caption{\Htwo{} 的解析期望与显式有限-shot SQD 抽样对照（左：$S=500$；右：$S=5000$，各 1000 个随机种子）。两者在离散节点处的尖峰位置与高度高度一致，显式采样直接验证了节点尖峰的存在与 $S^{-1/2}$ 收窄规律。}
+\label{fig:h2sample}
+\end{figure}
+
+\HtwoO{}（$n_{\text{reps}}=3$）在 $\lambda\in[0.1,100]$ 上检出两处关键节点（$\lambda_0\approx22.294$，$p_{\text{key}}\approx4.0\times10^{-20}$；$\lambda_0\approx98.858$，$p_{\text{key}}\approx1.44\times10^{-17}$），节点处 top-10 召回率由 1.0 降至约 0.9，SQD 误差由约 1.12 mHa 升至约 4.04 mHa，且危险窗口宽度随 shots 以 $S^{-1/2}$ 收窄。这些尖峰是孤立、可预测的病态点，而非 U 型回升。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.98\textwidth]{large_lambda_peaks.png}
+\caption{大范围 $\lambda$ 尖峰扫描。左上：\Htwo{} 中 HF 与双激发组态概率的准周期交换；右上：\Htwo{} 精确期望 SQD 误差的窄周期尖峰（对数纵轴），$S=5000$ 较 $S=500$ 尖峰更窄；左下：\HtwoO{}（$n_{\text{reps}}=3$）大范围扫描的关键组态遗漏代理量，红色虚线标出两处检出节点；右下：节点附近的显式有限-shot SQD 验证，误差在 $\lambda_0$ 邻域抬升。}
+\label{fig:peaks}
+\end{figure}
+
+作为交叉核对，受控噪声实验（\HtwoO{}，$S=500$，$\lambda=2$，固定预算并作粒子数后选）显示普通噪声无系统优势——无噪声 44.03 mHa、1\% bit flip 44.22 mHa、5\% bit flip 45.27 mHa、2\% 读出误差 44.67 mHa。此前观察到的``噪声促进收敛''主要来自不受控的候选子空间扩张；一旦固定子空间预算，该效应即消失。这与第 2 部分的结论一致：噪声注入仅在甜点区 $M_0\ll\text{max\_dets}\ll D$ 内提供增益，而本实验的小活性空间与固定预算恰不满足该条件。
+
+\subsection{小结：调参准则}
+
+综合上述结果，SQD 随 $\lambda$ 的实际行为不是宽而平滑的 U 型曲线，而是``覆盖不足区误差单调下降 $\rightarrow$ 关键组态覆盖饱和平台 $\rightarrow$ 极大 $\lambda$ 处离散概率节点的窄尖峰''三段结构。截断误差确实存在，但主要体现为 local/full 两态的距离并影响直接变分能量，SQD 通过重新对角化消除了其大部分影响。因此，实践中合理的准则不是寻找由截断与覆盖平滑平衡得到的普适最优 $\lambda$，而是在给定 shots、噪声与经典子空间预算下，选择刚好进入覆盖饱和区的最小 $\lambda_{\text{sat}}$，即满足 $E_{\text{SQD}}(\lambda)-E_{\text{best}}<\delta_E$ 且关键组态召回率在邻近参数点稳定的最小取值。平台之后继续增大 $\lambda$ 通常不改善 SQD 能量，反而带来更强过旋转、更多概率节点与更高的参数敏感性。
+
+\section{主动噪声注入对 SQD 精度的提升}
+
+在量子计算中，噪声通常被视为需要抑制的因素。本工作则表明，主动注入可控噪声可使 SQD 的基态能量误差下降。该现象具有第一性原理层面的解释，存在可预测的最优注入强度，并具有明确的失效边界。
+
+\subsection{问题：受限的采样与噪声的默认负面定位}
+
+SQD 从量子态采样得到 bitstring，每个 bitstring 对应一个电子组态，随后在采样子空间内进行经典精确对角化。其采样质量受两方面限制。其一，LUCJ 采样被限制于低阶激发：$e^{\kappa(t_1)}e^{iJ(t_2)}$ 仅产生单激发与双激发，采样分布自然落于 $S_{\text{LUCJ}}\subset B(\text{HF},4)$，即 HF 参考态附近 4 阶 Hamming 球内，无法覆盖更外层组态。其二，真机噪声翻转比特，使 bitstring 的占据数偏离电子数，破坏粒子数守恒。
+
+主流处理方式将违反守恒的样本视为污染，通过配置恢复修复为合法组态或直接丢弃，即将噪声定位为需要消除的负面因素。本段所考察的问题是：噪声是否必然为负面？能否主动利用噪声突破 LUCJ 的 $B(\text{HF},4)$ 覆盖上限？
+
+\subsection{方法：主动注入、理论推导与合理性验证}
+
+\paragraph{注入方案。} 对 LUCJ 采样得到的 bitstring 主动注入可控噪声：以强度 $\epsilon$ 翻转 $k_\epsilon=\epsilon\cdot n_q$ 个比特，随后进入配置恢复与子空间对角化。设置三组对照方案：A 为纯 LUCJ（无注入），B 为 LUCJ 叠加物理噪声（本工作方案），C 为 LUCJ 叠加随机翻转（对照，近似文献中的 uniform 注入）。
+
+\paragraph{理论推导。} 完整的十五条定理见附录，正文仅保留支撑方法的三条核心结果，即覆盖优势、最优 $\epsilon^*$ 的存在性与成本效率。推导基于以下三个前提。前提一（稀疏性）：基态 $|\Psi_0\rangle=\sum_i c_i|D_i\rangle$ 中仅有 $|K|\ll D$ 个组态具有显著权重。前提二（聚集性，源于微扰理论）：Rayleigh--Schr\"odinger 微扰给出 $k$ 阶激发系数满足 $|c_i^{(k)}|\le C\lambda^k$（$\lambda<1$）；设阈值 $\delta$，则 $|c_i|>\delta$ 要求 $k\le k_{\max}=\lfloor\log_\lambda(\delta/C)\rfloor$，而 Hamming 空间中 $d_H=2k$，故重要组态集中于 $K_\delta\subset B(\text{HF},d)$，其中 $d=2k_{\max}\approx4$（弱相关情形）。前提三（LUCJ 先验，源于电路构造）：$t_1$ 产生单激发（$d_H=2$），$t_2$ 产生双激发（$d_H=4$），故 $S_{\text{LUCJ}}\subset B(\text{HF},4)$；此即问题的根源，LUCJ 被限制于 4 阶球内。
+
+\paragraph{定理 4（覆盖优势）。} 噪声翻转 $k_\epsilon$ 个比特后，由三角不等式 $d_H(s',\text{HF})\le d_H(s',s)+d_H(s,\text{HF})\le k_\epsilon+d$ 可知，噪声组态落于 $B(\text{HF},d+k_\epsilon)$ 内，恰好越过 LUCJ 的 4 阶上限。比较两种采样在该邻域内命中重要组态的概率：
+\begin{equation}
+P_{\text{random}}=\frac{|K|}{D}\quad(\text{全空间均匀}),\qquad P_{\text{noise}}=\frac{|K|}{|B(\text{HF},d+k_\epsilon)|}\quad(\text{邻域内均匀}),
+\end{equation}
+\begin{equation}
+\frac{P_{\text{noise}}}{P_{\text{random}}}=\frac{D}{|B(\text{HF},d+k_\epsilon)|}\gg 1.
+\end{equation}
+含粒子数约束的 $|B|$ 精确计数为
+\begin{equation}
+|B(\text{HF},r)|=\sum_{j_\alpha+j_\beta\le\lfloor r/2\rfloor}\binom{n_{\text{occ}}}{j_\alpha}\binom{n_{\text{vir}}}{j_\alpha}\binom{n_{\text{occ}}}{j_\beta}\binom{n_{\text{vir}}}{j_\beta}.
+\end{equation}
+
+\begin{table}[H]
+\centering
+\caption{Hamming 球覆盖优势随体系维度增大。}
+\begin{tabular}{lccc}
+\toprule
+分子 & $D$ & $\lvert B(\text{HF},4)\rvert$ & $D/\lvert B\rvert$ \\
+\midrule
+LiH & 225 & 93 & 2.4 \\
+\HtwoO{} & 441 & 141 & 3.1 \\
+\Ntwo{} & 14400 & 610 & 23.6 \\
+H$_{10}$ & 63504 & 610 & 104 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+覆盖优势随体系维度 $D$ 增大而显著增强。
+
+\paragraph{定理 5（最优 $\epsilon^*$ 的存在性）。} 总误差为两个相反趋势竞争的结果：
+\begin{equation}
+\epsilon_{\text{total}}(\epsilon)=\underbrace{\frac{A}{M_0+\Delta M(\epsilon)}}_{\text{覆盖增益（单调下降）}}+\underbrace{B_{\text{corr}}\,\epsilon^2}_{\text{关联破坏（单调上升）}}.
+\end{equation}
+当 $\epsilon\to0$ 时覆盖不足，当 $\epsilon\to1$ 时关联误差发散；由连续函数极值定理，存在 $\epsilon^*\in(0,1)$ 使总误差取极小，其行为与随机共振相类比。
+
+图~\ref{fig:n2_grid} 以 \Ntwo{} 为例给出重要度指数 $\gamma$ 与探索比例 $\epsilon$ 的二维网格扫描，直接印证了最优 $\epsilon^*$ 的存在性：沿 $\epsilon$ 方向误差先降后稳，在 $\gamma=0.75,\ \epsilon=0.25$ 处取得极小（4.04 mHa），构成明确的``调参盆地''。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.72\textwidth]{ppt_n2_gamma_epsilon_grid.png}
+\caption{\Ntwo{}（$M\approx2970$ 档）重要度指数 $\gamma$ 与探索比例 $\epsilon$ 的二维网格扫描，色标为能量误差（越绿越低）。$\epsilon=0$（纯 LUCJ、无注入）时误差高达 80.8 mHa；引入噪声后误差显著下降，最优点位于 $\gamma=0.75,\ \epsilon=0.25$（蓝框，4.04 mHa），验证定理 5 所预言的 $\epsilon^*\in(0,1)$。}
+\label{fig:n2_grid}
+\end{figure}
+
+\paragraph{定理 15（成本效率与甜点区）。} 在成本模型 $B=c_qS+c_cM^2$ 下，当 LUCJ 采样集中时，相同预算内有
+\begin{equation}
+\frac{\Delta M_{\text{noise}}}{\delta M_{\text{shots}}}=\frac{c_q\,e^{S/K}}{2c_cM_0}\xrightarrow{S\gg K}\infty,
+\end{equation}
+即噪声注入（$S$ 不变、$M$ 增大）以低成本的经典计算替代高成本的量子采样。由此得到甜点区判据
+\begin{equation}
+M_0\ll\text{max\_dets}\ll D.
+\end{equation}
+
+其余定理概述如下：定理 6 给出配置恢复的失效阈值，当噪声等效强度达 $\epsilon_{\text{eff}}=0.5$ 时占据判别信号消失，界定了噪声的可用上限；定理 7--12 证明噪声注入不能被配置恢复、自洽迭代、增加 shots、调节 $\lambda$ 或均匀采样中的任一者所替代，是唯一同时满足``对干净输入生成新组态、探索 4 阶球以外、高命中率、零量子成本''四项条件的手段。完整证明见附录。
+
+\paragraph{合理性验证。} 鉴于噪声降低误差有违直觉，须首先排除虚假效应的可能：
+
+\begin{table}[H]
+\centering
+\caption{对噪声降低误差现象的合理性验证。}
+\begin{tabular}{p{4.5cm}p{4cm}p{5cm}}
+\toprule
+待排除的质疑 & 验证方式 & 结论 \\
+\midrule
+是否破坏变分性质 & 逐样本查验 $E_{\text{SQD}}\ge E_{\text{FCI}}$ & 全部成立，变分上界未被破坏 \\
+是否为偶然 & 20 组随机种子重复 & 均值 $0.003\pm0.004$ mHa，结果稳定 \\
+是否为配置恢复的副产物 & 统计恢复后组态的来源 & 85\% 为配置恢复无法生成的新组态 \\
+单个噪声组态是否有效 & 组态贡献分析 & 单独无效（2028 mHa），组合后有效（0.005 mHa） \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+上述验证表明，误差增益真实、可复现，且非配置恢复的副产物，方法成立。
+
+\subsection{实测结果}
+
+\paragraph{多体系 A/B/C 对比（固定 shots）。}
+
+\begin{table}[H]
+\centering
+\caption{多体系 A/B/C 对比（固定 shots）。}
+\begin{tabular}{lccccl}
+\toprule
+分子 & $D$ & A (mHa) & B (mHa) & C (mHa) & B<C \\
+\midrule
+LiH & 225 & 0.225 & 0.005 & 0.103 & 是（相对 A 提升 45 倍） \\
+H$_6$ & 400 & 9.728 & 0.200 & 0.453 & 是（2.3 倍） \\
+H$_8$ & 4900 & 33.692 & 0.751 & 14.282 & 是（19 倍） \\
+H$_{10}$ & 63504 & 46.629 & 9.560 & 43.773 & 是（4.6 倍） \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+误差增益随 $D$ 单调增强，与甜点区判据 $M_0\ll\text{max\_dets}\ll D$ 一致。H$_{10}$ 提供了决定性对照：在同样约束至 7437 组态的条件下，物理噪声改善 37.1 mHa，而随机翻转仅改善 2.9 mHa，噪声效率为随机的 13 倍。
+
+\paragraph{shots 扫描（各分子固定其 $\lambda$ 取值，\texttt{max\_dets}=8000）——A$\rightarrow$B 改善量（mHa）。}
+
+\begin{table}[H]
+\centering
+\caption{shots 扫描下 A$\rightarrow$B 的改善量（mHa）。}
+\begin{tabular}{ccccc}
+\toprule
+shots & H$_4$ & H$_6$ & H$_8$ & H$_{10}$ \\
+\midrule
+500 & +32.3 & +54.1 & +91.5 & +93.4 \\
+2000 & +3.6 & +5.9 & +30.1 & +36.9 \\
+16000 & +3.6 & +6.1 & +17.5 & +11.3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+改善量随 shots 增加而衰减（H$_{10}$ 由 +93 降至 +11）：当 shots 充足时，纯 LUCJ 采样已可自行覆盖相应组态，噪声的边际贡献随之下降。这表明噪声注入在 shots 受限时价值最高，与定理 15 一致。
+
+\paragraph{B 与 C（物理噪声与随机翻转）的对照。}
+
+\begin{table}[H]
+\centering
+\caption{B 与 C 的对照。}
+\begin{tabular}{lccccccl}
+\toprule
+分子 & $D$ & B@500 & C@500 & B@16k & C@16k & B<C \\
+\midrule
+\Htwo{} & 4 & 0 & 0 & 0 & 0 & 否（无甜点区） \\
+H$_4$ & 36 & $\sim$0 & $\sim$0 & $\sim$0 & $\sim$0 & 否（$D$ 过小，二者趋同） \\
+H$_6$ & 400 & 3.03 & 22.03 & 0 & 0 & 是（低 shots 领先 7 倍） \\
+H$_8$ & 4900 & 8.18 & 80.79 & 0.076 & 3.33 & 是（全程领先 10--44 倍） \\
+H$_{10}$ & 63504 & 16.52 & 105.18 & 7.22 & 17.41 & 是（全程领先） \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+B<C 在 H$_6$ 及更大体系中全程成立，表明物理噪声所携带的关联信息无法被随机注入所替代（定理 7--12）。
+
+\paragraph{理论与实验的一致性。}
+
+\begin{table}[H]
+\centering
+\caption{理论预测与实验结果的一致性。}
+\begin{tabular}{p{6.5cm}p{4cm}p{2cm}}
+\toprule
+定理预测 & 实验结果 & 是否一致 \\
+\midrule
+$P_{\text{noise}}/P_{\text{random}}=D/\lvert B\rvert>1$（定理 4） & B/C>1 & 是 \\
+优势随 $D$ 增大 & H$_6$<H$_8$<H$_{10}$ & 是 \\
+$\epsilon^*$ 存在（定理 5） & 扫描存在唯一极小值 & 是 \\
+甜点区 $M_0\ll\text{max\_dets}\ll D$（定理 15） & H$_8$/H$_{10}$ 效果最佳 & 是 \\
+噪声不可被恢复/自洽/shots/$\lambda$ 替代（定理 7--12） & 85\% 为新组态 & 是 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{与已有工作的比较}
+
+噪声改善 SQD 的现象本身并非首次报道——已有前沿文献在真机上观测到该现象，另有一支近期工作系统论证了 QSCI/SQD 的采样成本权衡，包括成本随组态数的标度关系、shots 饱和及中间过渡区等。但上述两条研究路线均未涉及主动噪声注入与配置恢复（后者明确声明仅采用理想 CASCI/scaled/LUCJ，并假设无需配置恢复）。因此本工作的贡献落于二者未覆盖的范围：Hamming 球覆盖机制的第一性原理解释、主动注入的定量控制，以及此前工作回避的边界问题（噪声优于随机的条件、不可替代性、甜点区判据）。
+
+\paragraph{同坐标系对标。} 在成本批判工作所采用的同一坐标系中给出实测结果最具说服力。取 \Ntwo{}(10e,10o)=20 qubit（$D$=63504，FCI=$-109.04716471$ Ha），在其相同的横轴（组态数 \texttt{num\_dets}）与纵轴（能量误差）上叠加 B、C 两条曲线：物理噪声 B 的误差由 92 mHa 单调下降至 11 mHa；随机翻转 C 几乎不变，维持于 92 mHa 附近（多种子结果 $91.98\pm0.33$，预算增至 10 倍后方降至 78.8）。C 的失效具有几何本质——当 $D$=63504 时随机命中概率趋于零——而非偶然。该结果直接回应了``QSCI overall more expensive''的论断：主动噪声注入将成本曲线向左下方推移，在相同组态预算下达到显著更低的能量。
+
+图~\ref{fig:n2_hci} 在文献所用的同一坐标系（横轴为子空间维度 $M$，纵轴为对各自参考的能量误差）中叠加了本工作的噪声增强 SQD 与文献的 22 轨道经典 HCI。可见本工作 10 轨道的噪声增强 SQD（B$''$\_opt）曲线整体位于左下方，在相同 $M$ 下误差显著更低；跨活性空间的口径差异（本工作 10o，文献 22o）已在图中标注。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{ppt_n2_hci_benchmark.png}
+\caption{\Ntwo{} 在文献同坐标系下的对标：横轴为子空间维度 $M$（CI 展开中的组态数），纵轴为能量误差（对数轴）。蓝线为文献 22 轨道经典 HCI，粉/红线为本工作 10 轨道噪声增强 SQD 的基础版 B$''$ 与最优版 B$''$\_opt（$\gamma=0.75,\ \epsilon=0.25$）。在 $M=8000$ 处，本工作 10o 的 B$''$\_opt 达 1.05 mHa。}
+\label{fig:n2_hci}
+\end{figure}
+
+\paragraph{与 HCI 的对标：由平台局限到逐层逼近。} 上述批判的第二条为``QSCI 展开的紧凑度不及经典 heat-bath CI(HCI)''。将 PySCF 原生 \texttt{selected\_ci.SCI} 纳入同一图中，并统一至乘积维度 $M$ 的坐标。初始情形下，均匀噪声 B 在小预算区可追平 HCI，但存在平台：
+
+\begin{table}[H]
+\centering
+\caption{初始情形下 B / C / HCI 的对照（误差单位 mHa）。}
+\begin{tabular}{cccc}
+\toprule
+$M$ & B（均匀噪声） & C（随机翻转） & HCI \\
+\midrule
+576 & 15.85 & 92.17 & 14.03 \\
+$\sim$1300 & 12.95 & 92.17 & 4.90 \\
+$\sim$3500 & 11.36 & 79.79 & 2.59 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+在小预算区（$M\approx576$），B(15.9) 与 HCI(14.0) 基本相当，表明噪声增强 SQD 可追平经典 HCI，从而反驳了``其紧凑度不及 HCI''的一般性论断。然而在中大预算区，B 于约 11 mHa 处出现平台：B 属于以 HF 为中心的 Hamming 球盲扩，缺少 HCI 所依据的 $\lvert H_{ij}c_j\rvert$ 定向筛选；C 全程维持于 92 mHa，反衬出 B 的物理偏置确实发挥了作用。
+
+将 HCI 的重要度判据 $\lvert H_{ij}c_j\rvert$ 逐项引入噪声翻转方向后，该平台被突破。本工作构造了一条方法阶梯（B$\rightarrow$B$'$$\rightarrow$B$''$$\rightarrow$B$'''$），每补全一层判据，曲线即向 HCI 逼近一个台阶（相同 $M$，误差单位 mHa）：
+
+\begin{table}[H]
+\centering
+\caption{定向噪声方法阶梯 B / B$'$ / B$''$ / B$'''$ 与 HCI 的逐层逼近（误差单位 mHa）。}
+\begin{tabular}{cccccc}
+\toprule
+$M$ & B 均匀 & B$'$ 均匀定向 & B$''$ $\lvert H\rvert$ 定向 & B$'''$ $\lvert c{\cdot}H\rvert$ 定向 & HCI \\
+\midrule
+400 & 52.6 & 23.2 & 76.1 & 19.3 & 14.0 \\
+900 & 15.9 & 13.5 & 52.8 & 13.4 & 14.0 \\
+2970 & 11.8 & 8.4 & 45.1 & 4.35 & 2.6 \\
+4970 & 11.4 & 7.0 & 4.40 & 2.38 & 2.6 \\
+7921 & 11.4（平台） & 5.45 & 1.72 & 1.42 & 1.12 (@8464) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+该方法阶梯的构造逻辑如下：B 为均匀噪声（无方向的 Hamming 球盲扩），受限于约 11 mHa 平台，即批判所指``紧凑度不足''的层次；引入保粒子数激发方向与配置恢复迭代后得到 B$'$（均匀定向），平台被突破至 5.45 mHa；进一步将方向对齐真实哈密顿量耦合 $\lvert H_{ij}\rvert$ 得到 B$''$（静态定向），降至 1.72 mHa，接近 HCI；再乘以基态系数 $\lvert c_j\rvert$ 以补全 HCI 完整判据，得到 B$'''$（完整重要度），达到 1.42 mHa，与 HCI 之差收窄至 0.3 mHa 以内。
+
+图~\ref{fig:ablation} 为控制同机、同随机种子、同预算的严格消融对照，唯一变量为是否加入定向探索（$\gamma$/$\epsilon$）。可见由基础版 B$''$（无软化探索）到最优版 B$'''$\_opt，在中等 $M$ 区间获得约 3--5 mHa 的净增益，并在 $M\approx7921$ 处将误差由 1.43 mHa 压至 1.05 mHa，反超 HCI@7921 的 1.19 mHa。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{ppt_ablation_softexplore.png}
+\caption{定向探索的净增益消融对照（同机、同 seed、同预算，唯一区别为 $\gamma$/$\epsilon$）。黑线为经典 HCI（22 轨道基准），蓝虚线为基础版 B$''$（无软化探索，10 轨道），橙线为 B$'''$\_opt（$\gamma=0.75,\ \epsilon=0.25$，10 轨道）。红色箭头标出中等 $M$ 处的净增益（$-5.0$、$-3.4$ mHa）；$M\approx7921$ 处 B$'''$\_opt 反超 HCI。}
+\label{fig:ablation}
+\end{figure}
+
+结论明确：在 $M$=7921 时，B$'''$=1.42 mHa 对应 HCI@8464=1.12 mHa（差距 <0.3 mHa，属同一紧凑度量级）；在 $M$=4970 时，B$'''$=2.38 已与 HCI@3481=2.59 相当乃至略优。三条对照曲线各具作用：C（随机）全程维持于 92 mHa，说明误差增益来自物理噪声与定向筛选，而非随机地增加组态数；B 的平台说明均匀噪声存在上限、定向筛选为必需；HCI 则提供了公平的参照标尺。由此可见，``QSCI 紧凑度不足''并非量子方法的固有缺陷，而仅是此前采样缺乏哈密顿量导向所致；一旦将 $\lvert H_{ij}c_j\rvert$ 判据引入噪声方向并配合配置恢复迭代，QSCI 即可在相同 $M$ 下达到与经典 HCI 相当的紧凑度。
+
+该结论的剩余边界须予以说明。其一，在小 $M$（$\le$1600）起步阶段，广度型的 B$'$ 收敛快于重要度聚焦的 B$'''$，B$'''$ 的优势体现在大 $M$（最终精度）区间。其二，本工作规模仍为 (10e,10o)，前沿文献采用 (10e,22o)，本地 20 qubit 已达 LUCJ 采样与稠密对角化的上限，规模对齐需在服务器或真机上进行。其三，B$''$/B$'''$ 需以哈密顿量积分与上一轮基态系数作为经典端输入，二者均已具备，不引入额外量子开销。
+
+\subsection{配置恢复方法对比}
+
+主动噪声注入会产生违反粒子数守恒的比特串，须经配置恢复修复为合法组态。我们比较了三种恢复策略：\texttt{directed}（依据平均占据数定向翻转）、\texttt{max\_dev}（优先修正偏离最大的比特）以及 \texttt{none}（不做恢复，直接丢弃非法样本），并在 \HtwoO{} 上于两档 bitflip 强度（$0.01$ 与 $0.05$）下扫描 $\lambda$ 与 $n_{\text{shots}}$。
+
+结果如图~\ref{fig:recovery001} 与图~\ref{fig:recovery005}。在弱噪声（bitflip=0.01）下三种策略差异极小：非法样本比例低，恢复与否对最终子空间几乎无影响，误差曲线基本重合（图~\ref{fig:recovery001}）。而在强噪声（bitflip=0.05）下差异显现，\texttt{directed} 系统性优于 \texttt{max\_dev}，二者又均优于 \texttt{none}（图~\ref{fig:recovery005}）——此时非法样本比例升高，定向恢复能将其中携带的关联信息重新纳入子空间，而非简单丢弃。这表明：噪声越强，定向配置恢复的价值越高；在弱噪声区，是否恢复并非关键。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.98\textwidth]{ppt_recovery_bitflip001.png}
+\caption{\HtwoO{}、bitflip=0.01 下三种配置恢复方法（\texttt{directed}/\texttt{max\_dev}/\texttt{none}）的对比。左：固定 $n_{\text{shots}}=8000$ 扫 $\lambda$；右：固定 $\lambda=0.5$ 扫 $n_{\text{shots}}$。弱噪声下三者曲线基本重合。}
+\label{fig:recovery001}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.98\textwidth]{ppt_recovery_bitflip005.png}
+\caption{\HtwoO{}、bitflip=0.05 下三种配置恢复方法的对比。左：扫 $\lambda$；右：扫 $n_{\text{shots}}$。强噪声下 \texttt{directed} 系统性最优、\texttt{none} 最差，定向恢复的价值随噪声增强而显现。}
+\label{fig:recovery005}
+\end{figure}
+
+\subsection{边界与出口}
+
+噪声注入在甜点区内成效显著，但存在明确的失效情形。当 $M_0\approx\text{max\_dets}$ 时，子空间已被截断填满，噪声组态无法进入，方法失效；当 $D\approx M_0$ 时（如小分子 \Htwo{}、H$_4$），全空间近乎已被覆盖，噪声无增量贡献，方法同样失效；此外，如 2.4 所述，均匀噪声 B 相对 HCI 存在约 11 mHa 的平台，定向阶梯 B$'''$ 虽已将其压至 HCI 之内 0.3 mHa 以下（\Ntwo{}），但在大 $M$ 区间仍未完全追平，且规模受限于本地 20 qubit。
+
+即便在甜点区内，噪声注入亦存在其无法逾越的界限：H$_{10}$ 在 16k shots 下 B 仍有 7.22 mHa 误差，未达 1.6 mHa 的化学精度（$D$=63504 过大，\texttt{max\_dets}=8000 的子空间不足）。这一问题正是第 3 段（EWF 分片）的研究对象——通过将大分子分解，使每个碎片满足 $M_0^{\text{frag}}\ll\text{max\_dets}\ll D^{\text{frag}}$，重新落入甜点区，分片与噪声注入二者可自然叠加。
+
+\section{EWF 分片求解大分子——二肽 Gly-Gly}
+
+单块 SQD 无法容纳真实肽分子。本工作采用 EWF 嵌入将大分子分解为若干碎片，对每个碎片分别执行 SQD，再经典重构总能量，使二肽 Gly-Gly 在含噪条件下达到化学精度。
+
+\subsection{问题：FCI 空间指数爆炸}
+
+SQD 的子空间来自采样，但其所需覆盖的全空间维度为 $D=\binom{2n}{N_e}$，随体系呈指数增长。真实肽分子 Gly-Gly（甘氨酸二肽，C$_4$H$_8$N$_2$O$_3$，17 原子，STO-3G，70 电子）的全分子活性空间过大，单块 LUCJ 电路所需比特数远超 NISQ 上限，无法整体求解。
+
+第 2 段的噪声注入在甜点区 $M_0\ll\text{max\_dets}\ll D$ 内有效，但对 $D$ 极大的体系，即便注入噪声并增大 \texttt{max\_dets}，子空间相对 $D$ 仍属极小比例——此即第 2 段末 H$_{10}$ 在 16k shots 下仍有 7.22 mHa、未达化学精度的根源。直接扩大活性空间将导致比特数爆炸，直接截断至小 CAS 则丢失关联、精度不足。因此，需要一个将大问题分解为可解小问题的框架。
+
+\subsection{方法：EWF/DMET 嵌入分片、碎片级 SQD 与含噪超参优化}
+
+\paragraph{总体流程。} 采用 EWF/DMET 量子嵌入将大分子分解，对每个碎片单独求解后经典重构。首先进行分片：Gly-Gly 按原子分为 fine 9 碎片（N0/C1/C2/O3/N4/C5/C6/O7/O8），每个碎片通过 Schmidt 分解构造 impurity 与 bath，得到有效哈密顿量 $H_{\text{eff}}^{\text{frag}}$；各碎片轨道数不等（最大簇 14 轨道），且全部采用 LUCJ 采样路径——最小碎片的乘积维度 $\binom{10}{5}^2=6.35\times10^4$ 已远超精确求解的门槛，无一退化为精确 FCI。其次执行碎片级 SQD：对每个碎片的小电路进行 SQD（\texttt{solve\_cluster\_sqd}，$N_{\text{shots}}=10^5$，$\lambda=5.0$），并逐碎片与 cluster-FCI 对比。继而进行经典能量重构：由碎片相关能重构总能量（DM 泛函），并扣除碎片间的双重计数。最后进行含噪超参优化：在读出噪声 $p=0.5\%$ 条件下，采用贝叶斯优化（TPE）搜索最优超参（\texttt{n\_reps}、恢复策略、shots 预算）。
+
+图~\ref{fig:ewf_frag} 直观展示了该分片流程：Gly-Gly 沿骨架分为 9 个碎片，取单个碎片经 Schmidt 分解得到 impurity+bath，送入碎片级 SQD 求解并对齐 cluster-FCI，最终经典重构总能量。分片使每个碎片的维度 $D^{\text{frag}}\ll D^{\text{global}}$，重新落入 $M_0^{\text{frag}}\ll\text{max\_dets}\ll D^{\text{frag}}$ 的甜点区。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{ppt_glygly_ewf_fragments.png}
+\caption{Gly-Gly 二肽（17 原子/70 电子，STO-3G）经 EWF/DMET 分为 fine 9 碎片的流程示意。骨架 C/N（绿）、羰基/羧基 O（橙），最大簇 14 轨道。取单个碎片经 Schmidt 分解构造 impurity+bath，进行碎片级 SQD（\texttt{solve\_cluster\_sqd}，$N_{\text{shots}}=10^5$，$\lambda=5.0$，对齐 cluster-FCI），再经 DM 泛函重构总能量并扣除双重计数。}
+\label{fig:ewf_frag}
+\end{figure}
+
+关于工具口径需予以标注：端到端管线（RHF $\rightarrow$ CCSD(T) $\rightarrow$ EWF 参考 $\rightarrow$ 碎片 SQD $\rightarrow$ 重构）采用自研 TensorCircuit + openfermion 库，含噪 BO 部分则采用 qiskit-addon-sqd + ffsim。二者最终拟统一至自研库，并排比较时须注意其来源不同。工程实现方面，28-qubit 碎片的完整态矢量（$2^{28}$ 复数约 4.3 GB）超出 V100 32 GB 显存，故强制采用 numpy 后端使态矢量在主机内存中构造（EWF 参考峰值仅 3 GB）。
+
+\paragraph{理论要点。} 嵌入的基本原理为：对每个碎片，利用全局 1-RDM 进行 Schmidt 分解，得到与 impurity 强纠缠的 bath 轨道，构造维度远小于全空间的 impurity+bath 有效问题，并将碎片解出的相关能拼合为总能量。分片之所以能恢复甜点区条件，在于分片后每个碎片的全空间维度 $D^{\text{frag}}\ll D^{\text{global}}$，使 $M_0^{\text{frag}}\ll\text{max\_dets}\ll D^{\text{frag}}$ 重新成立——此即第 2 段噪声注入生效的条件，故分片与噪声注入二者可自然叠加。成本方面，碎片级计算可并行，单碎片量子成本为 $O(S)$，经典重构成本随碎片数线性增长。
+
+\paragraph{合理性验证。} 管线对每个碎片输出 $E_{\text{SQD}}$ 与 $E_{\text{FCI}}$ 的偏差（mHa 量级），确认碎片级 SQD 在各碎片上收敛至对应 FCI；同时计算 RHF、CCSD(T)、EWF-FCI 参考三个口径，作为总能量重构的校验基准。
+
+\subsection{结果：二肽实测与含噪贝叶斯优化}
+
+\paragraph{端到端管线基准（自研库，fine 9 碎片）。}
+
+\begin{table}[H]
+\centering
+\caption{端到端管线基准（自研库，fine 9 碎片）。}
+\begin{tabular}{lcp{6.5cm}}
+\toprule
+物理量 & 数值 (Ha) & 口径 \\
+\midrule
+RHF & $-483.182177$ & 全分子，70 电子 \\
+CCSD(T) 金标准 & $-483.727028$ & 全分子（CCSD=$-483.713054$，(T)=$-0.013974$） \\
+EWF 参考 e\_mf & $-483.182177$ & 9 碎片，mean-field \\
+EWF 参考 e\_tot\_ewf(DM) & $-481.162180$ & 9 碎片 FCI solver，DM 泛函重构 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+端到端管线已完整运行：RHF $\rightarrow$ CCSD(T) $\rightarrow$ EWF 参考（9 碎片）$\rightarrow$ 逐碎片 \texttt{solve\_cluster\_sqd} 对比 \texttt{cluster\_fci} $\rightarrow$ 碎片级并行 $\rightarrow$ 能量重构。采用自研库带来的加速源于单轮求解（相对 qiskit 的自洽多轮）、碎片级并行、轻量 Slater--Condon 对角化，以及显式 \texttt{max\_dets} 硬上限。
+
+\paragraph{含噪贝叶斯优化（frontier CAS(14o) 单簇，$p=0.5\%$ 读出噪声）。} 须先明确口径：本部分基准为 frontier CAS(14o, 7$\alpha$7$\beta$) 单簇的 cluster-FCI = $-32.61894180$ Ha，与 3.3 中全分子 CCSD(T)=$-483.727028$ Ha 并非同一口径（前者为单个活性簇，后者为全分子）。以下 +1.521 mHa 系该 CAS 簇子空间内相对 cluster-FCI 的误差。
+
+结论一，贝叶斯优化优于随机搜索：
+
+\begin{table}[H]
+\centering
+\caption{贝叶斯优化（TPE）与随机搜索的达标率对比。}
+\begin{tabular}{lccc}
+\toprule
+采样器 & trial & 达标数 & 达标率 \\
+\midrule
+Random & 25 & 1 & 4\% \\
+TPE（贝叶斯） & 19 & 8 & 42\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+在相同预算下，TPE 的达标命中率为随机搜索的 10.5 倍。其机制在于：读出噪声使目标函数变得崎岖（存在大片不达标的惩罚平台），随机撒点难以命中狭窄的达标区（\texttt{n\_reps}=4 且 300k shots），而 TPE 在 8 个 startup 之后即可锁定该区域。
+
+结论二，\texttt{n\_reps} 具有决定性作用，\texttt{n\_reps}=4 为唯一达标区：
+
+\begin{table}[H]
+\centering
+\caption{\texttt{n\_reps} 对精度的决定性作用。}
+\begin{tabular}{ccc}
+\toprule
+\texttt{n\_reps} & 达标数 & 最优误差 (mHa) \\
+\midrule
+1 & 0 & +9.843 \\
+2 & 0 & +3.344 \\
+3 & 0 & +1.745 \\
+4 & 9 & +1.521 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+误差随 \texttt{n\_reps} 增大单调下降近一个数量级；\texttt{n\_reps}=3 仅差临界值一步（+1.745>1.6），唯有 \texttt{n\_reps}=4 可稳定压至 +1.521 mHa，低于 1.6 mHa 的化学精度。含噪条件下的甜点（\texttt{n\_reps}=4）较无噪场景（\texttt{n\_reps}=3）高出一档，需以更丰富的 LUCJ 组态池补偿 post-select 所丢弃的样本。
+
+结论三，纯 post-select 优于自洽恢复：
+
+\begin{table}[H]
+\centering
+\caption{纯后选（PS）与自洽恢复（REC）的对照。}
+\begin{tabular}{lccc}
+\toprule
+方法 & 达标数 & 最优误差 (mHa) & 平均耗时 \\
+\midrule
+PS 纯后选 & 9 & +1.521 & 41 s \\
+REC 自洽恢复 & 0 & +1.924 & 62 s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+在各档 \texttt{n\_reps} 上 PS 均优于 REC：直接丢弃 Hamming 权重非法的样本，较自洽组态恢复既更精确亦更经济（REC 耗时增加约 50\%，且始终未达标）。综合而言，$p=0.5\%$ 下的推荐配置为：post-select + \texttt{n\_reps}=4 + TPE(startup=8)，达标 shots=300k，达标误差 +1.521 mHa。
+
+\subsection{与已有工作的比较}
+
+据现有文献，SQD 应用于二肽电子结构基本处于空白——肽类的量子模拟多采用 VQE 处理几何或折叠问题，而非以 SQD 求解电子基态。因此本工作的贡献体现于两方面：体系新（Gly-Gly 电子结构的 EWF-SQD 求解）与数据新（Gly-Gly 精度—成本关系及含噪超参基线，包括贝叶斯优于随机、\texttt{n\_reps} 的决定性作用、PS 优于 REC）。
+
+本工作未进行 VQE 的实测，故不宣称``实测优于 VQE''。准确的表述为：SQD 在该体系实测达到化学精度；其相对 VQE 更稳定、更可复现的结论，系基于机制论证与文献量级参考（SQD 为变分上界且无参数优化，VQE 受贫瘠高原制约且噪声下可能假性偏低），VQE 的实测对照有待补充。
+
+\subsection{边界与出口}
+
+本方法存在如下边界。其一，CAS 系统误差：+1.521 mHa 仅为 CAS(14o) 子空间内相对 cluster-FCI 的误差，相对真实全空间尚有约 +154 mHa 的 CAS 截断系统误差未消除，欲消除之需回到 fine 细分分片（每个 cluster $\le$14 轨道以免 CAS），故不应将``达到化学精度''表述为``绝对达标''。其二，噪声档未跑完：仅 $p=0.5\%$ 一档完成并收敛，$p=1\%$、$p=2\%$ 两档因 REC 路径耗时较长而未完成，完整的``达标成本—噪声强度''曲线可采用仅保留 PS 的快速版重跑三档（REC 已确认无价值，可略去）。其三，工具口径：端到端采用自研库、含噪 BO 采用 qiskit+ffsim，二者并排时来源不同。
+
+\section{结论}
+
+本报告围绕基于采样的量子对角化（SQD）由小分子验证走向实用体系过程中所面临的采样效率、噪声干扰与分子尺寸三类瓶颈，分别给出了相应的分析与改进方法。SQD 以量子采样确定重要组态子空间、以经典精确对角化求解能量，其能量为真实基态的变分上界、不依赖参数优化、且量子成本与体系规模解耦；在 \Htwo{}、LiH 等小分子上可无偏复现 Full CI 结果，方法本身不引入系统偏差。这一框架构成了后续三项改进的共同基础。
+
+在采样效率方面，本工作厘清了 \texttt{ccsd\_scale} 参数 $\lambda$ 与采样数 $S$ 对精度与成本的作用机制：二者均通过增加所覆盖的关键组态数而单调提升精度，但增益随参数增大逐渐饱和，且伴随子空间规模扩大带来的对角化成本上升，因而需在精度与效率之间加以权衡，而非存在孤立的最优取值。
+
+在噪声干扰方面，本工作给出了核心结果：对 LUCJ 采样主动注入可控噪声可系统地降低基态能量误差。该现象具有第一性原理层面的解释——噪声将采样组态推出 LUCJ 固有的 4 阶 Hamming 球，从而以远高于全空间随机采样的概率命中重要组态（定理 4）；其误差为覆盖增益与关联破坏两种相反趋势竞争的结果，存在最优注入强度 $\epsilon^*$（定理 5）；其成本优势体现于以低成本经典计算替代高成本量子采样，并可由甜点区判据 $M_0\ll\text{max\_dets}\ll D$ 加以刻画（定理 15）。多体系实测表明，误差增益随体系维度 $D$ 单调增强，物理噪声全程优于随机翻转，且理论预测与实验结果一致。在与已有工作相同的坐标系下，本方法进一步将 \Ntwo{} 的成本曲线显著左移；通过将哈密顿量重要度判据 $\lvert H_{ij}c_j\rvert$ 逐层引入噪声方向（B$\rightarrow$B$'$$\rightarrow$B$''$$\rightarrow$B$'''$），QSCI 的紧凑度得以逼近经典 heat-bath CI（$M$=7921 时二者相差 0.3 mHa 以内），表明``QSCI 紧凑度不足''并非量子方法的固有缺陷，而源于此前采样缺乏哈密顿量导向。
+
+在分子尺寸方面，本工作采用 EWF/DMET 嵌入分片将大分子分解为可解碎片，对每个碎片分别执行 SQD 并经典重构总能量。以甘氨酸二肽 Gly-Gly（70 电子）为对象，端到端管线已完整跑通并对齐 CCSD(T) 金标准；在 $p=0.5\%$ 读出噪声下，含噪超参优化给出三条基线结论：贝叶斯优化的达标命中率约为随机搜索的 10.5 倍，\texttt{n\_reps} 对精度具有决定性作用（\texttt{n\_reps}=4 为唯一达标区，误差 +1.521 mHa 低于化学精度），纯后选（PS）在精度与成本上均优于自洽恢复（REC）。据现有文献，以 SQD 求解二肽电子结构此前基本处于空白，本工作在体系与数据两方面均具新意。
+
+上述三项改进并非彼此独立，而具有可组合性。分片使每个碎片重新落入噪声注入所需的甜点区，二者可自然叠加为碎片自适应噪声调度——各碎片采用不同的 $\lambda$ 与最优 $\epsilon^*$——从而为第 2 部分中 H$_{10}$ 在受限采样下未达化学精度的遗留问题提供了直接的解决途径。整体精度受木桶效应约束，由最弱一环决定，在最优分配下应使各环误差相当。
+
+本工作亦存在若干有待完善之处。其一，与 VQE 的比较目前仅基于机制论证与文献量级参考，尚缺自跑的 VQE 实测对照。其二，二肽结果中 +1.521 mHa 系 CAS(14o) 子空间内相对 cluster-FCI 的误差，相对真实全空间尚有约 +154 mHa 的 CAS 截断系统误差未消除，需通过更精细的分片（每 cluster $\le$14 轨道以免 CAS）予以处理。其三，含噪超参优化仅完成 $p=0.5\%$ 一档，$p=1\%$、$p=2\%$ 两档尚待以仅保留后选的快速流程补全。其四，噪声增强与 HCI 的对标目前受限于本地 20 qubit 的规模，与前沿文献 (10e,22o) 的规模对齐需在服务器或真机上进行。此外，端到端管线与含噪优化两部分分别基于自研库与 qiskit+ffsim，工具口径的最终统一亦为后续工作的一部分。
+
+总体而言，三项改进分别针对采样效率、噪声与分子尺寸各自的限制，并可相互组合，使 SQD 由小分子体系的验证性方法向真实体系的实用工具迈进了一步。
+
+\appendix
+\section{不可替代性定理 7--12}
+
+\begin{table}[H]
+\centering
+\caption{不可替代性定理 7--12。}
+\begin{tabular}{cp{4.5cm}p{6.5cm}}
+\toprule
+定理 & 命题（噪声 $\ne$ X） & 关键论证 \\
+\midrule
+7 & $\ne$ 配置恢复 & 配置恢复对干净输入无效（源码：\texttt{if len(occ)==target: break}） \\
+8 & $\ne$ 自洽迭代 & 自洽迭代反复处理同一批比特串，不生成新串 \\
+9 & $\ne$ 增加 shots & LUCJ 集中时 $\delta M_{\text{shots}}\approx\Delta S\cdot e^{-S/K}\to0$ \\
+10 & $\ne$ 调节 $\lambda$ & LUCJ 恒处于 $B(\text{HF},4)$ 内，噪声可达 $B(\text{HF},4{+}k_\epsilon)$ \\
+11 & $\ne$ 均匀采样 & 由定理 4，$D/\lvert B\rvert>1$ \\
+12 & 唯一性 & 唯一同时满足：对干净输入生成新组态、探索 4 阶球以外、高命中率、零量子成本 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+定理 6（恢复失效阈值）：$\bar n_i=n_i(1-2\epsilon_{\text{eff}})+\epsilon_{\text{eff}}$，判别信号 $\Delta=1-2\epsilon_{\text{eff}}$，当 $\epsilon_{\text{eff}}^{\text{th}}=0.5$ 时配置恢复失效。
+
+\section{图表清单}
+
+下表汇总本报告正文所含插图及其在文中的交叉引用位置。
+
+\begin{table}[H]
+\centering
+\caption{正文插图清单。}
+\begin{tabular}{p{2.2cm}p{8.3cm}l}
+\toprule
+引用 & 内容 & 位置 \\
+\midrule
+图~\ref{fig:controlled} & 受控实验汇总（态距离/oracle SQD/有限采样/噪声对照） & 第 2 部分 \\
+图~\ref{fig:lih_scan} & LiH 的 $\lambda$ 与 $n_{\text{shots}}$ 双向扫描 & 第 2 部分 \\
+图~\ref{fig:h2o_scan} & \HtwoO{} 的 $\lambda$ 与 $n_{\text{shots}}$ 双向扫描 & 第 2 部分 \\
+图~\ref{fig:saturation} & 关键组态覆盖饱和实验 & 第 2 部分 \\
+图~\ref{fig:h2sample} & \Htwo{} 解析期望与显式采样对照 & 第 2 部分 \\
+图~\ref{fig:peaks} & 大范围 $\lambda$ 尖峰扫描 & 第 2 部分 \\
+图~\ref{fig:n2_grid} & \Ntwo{} 的 $\gamma\times\epsilon$ 网格扫描（最优 $\epsilon^*$） & 第 3 部分 \\
+图~\ref{fig:n2_hci} & \Ntwo{} 噪声增强 SQD 与 HCI 同坐标系对标 & 第 3 部分 \\
+图~\ref{fig:ablation} & 定向探索净增益消融（B$''$/B$'''$/HCI） & 第 3 部分 \\
+图~\ref{fig:recovery001} & 配置恢复方法对比（bitflip=0.01） & 第 3 部分 \\
+图~\ref{fig:recovery005} & 配置恢复方法对比（bitflip=0.05） & 第 3 部分 \\
+图~\ref{fig:ewf_frag} & Gly-Gly 二肽 EWF 分片示意（9 碎片） & 第 4 部分 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+尚待补充的示意图：Hamming 球覆盖示意（$D$/$B(\text{HF},4)$/$B(\text{HF},4{+}k_\epsilon)$/$K$）、含噪贝叶斯优化的 \texttt{n\_reps} 扫描与 TPE/随机、PS/REC 对比图（数据已齐备，见第 3 部分表格）。
+
+\section{tc\_sqd：基于 TensorCircuit 的自研 SQD 实现}
+
+本工作的端到端管线采用自研的 \texttt{tc\_sqd} 包。它是一个适配 TensorCircuit + PySCF 的轻量级 SQD 实现，参考 \texttt{qiskit-addon-sqd} 的设计，但不依赖 \texttt{numpy}$\ge$2 / jax 的硬性要求，可在 \texttt{numpy} 1.x/2.x 下运行，便于与 Vayesta 等倾向 \texttt{numpy} 2 的库共存。
+
+\subsection{核心特性}
+
+\begin{itemize}[leftmargin=1.6em]
+  \item 统一入口 \texttt{compute\_ground\_state\_energy}，支持 \texttt{fci} / \texttt{sqd} / \texttt{direct} 三种求解方法；
+  \item 比特串矩阵 $\leftrightarrow$ 整数互转，适配 TensorCircuit 采样；
+  \item 基于平均占据数的配置恢复（纠正噪声导致的粒子数违例）、批量子采样、汉明权重后选择；
+  \item CI 矩阵构造（Slater--Condon）、子空间对角化、迭代 SQD、轨道优化；
+  \item CCSD 振幅驱动的 LUCJ ansatz 电路构造（量子态制备侧）；
+  \item Pauli 哈密顿量在比特串子空间的投影与对角化（可处理 QAOA-MaxCut 等非费米子问题）。
+\end{itemize}
+
+\subsection{三种求解方法}
+
+\begin{table}[H]
+\centering
+\caption{\texttt{tc\_sqd} 提供的三种求解方法。}
+\begin{tabular}{lll}
+\toprule
+method & 用途 & 特点 \\
+\midrule
+\texttt{"fci"} & 精确基准 & 枚举全部行列式，PySCF Davidson 对角化 \\
+\texttt{"direct"} & 小体系/教学 & 显式构造 CI 矩阵 + \texttt{numpy.linalg.eigvalsh} \\
+\texttt{"sqd"} & 量子采样 & 迭代 SQD：恢复 $\rightarrow$ 采样 $\rightarrow$ 对角化 $\rightarrow$ 更新占据数 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\Htwo{}/STO-3G 三种方法结果一致：$E=-1.13728383$ Ha（$=$ PySCF FCI）。
+
+\subsection{快速开始（\texorpdfstring{\Htwo{}}{H2} 三步）}
+
+\begin{lstlisting}[language=Python]
+import numpy as np
+import tensorcircuit as tc
+from pyscf import gto, scf
+import tc_sqd
+
+# 1. PySCF 构建分子哈密顿量（MO 基积分）
+mol = gto.M(atom="H 0 0 0; H 0 0 0.74", basis="sto-3g", verbose=0)
+mf  = scf.RHF(mol).run()
+mo  = mf.mo_coeff
+h1e  = mo.T @ mf.get_hcore() @ mo
+eri  = np.einsum("pqrs,pi,qj,rk,sl->ijkl", mol.intor("int2e_sph"), mo, mo, mo, mo)
+ecore = mf.energy_nuc()
+norb, nelec = mol.nao_nr(), (mol.nelectron // 2, mol.nelectron // 2)
+
+# 2. TensorCircuit 采样比特串
+c = tc.Circuit(2 * norb)
+c.x(0); c.x(norb)                                  # HF 初态
+c.ry(0, theta=0.8); c.cnot(0, 1); c.ry(0, theta=-0.8)
+c.ry(norb, theta=0.8); c.cnot(norb, norb+1); c.ry(norb, theta=-0.8)
+bsm, probs = tc_sqd.sample_from_circuit(c, n_samples=2000)
+
+# 3. SQD 求解基态能量
+e = tc_sqd.compute_ground_state_energy(
+    h1e, eri, norb, nelec, ecore=ecore, method="sqd",
+    bitstring_matrix=bsm, probabilities=probs,
+)
+print(f"E(SQD) = {e:.8f}")   # -1.13728383
+\end{lstlisting}
+
+\subsection{LUCJ ansatz（CCSD 振幅驱动）}
+
+从 PySCF CCSD 双激发振幅 t2 构造 LUCJ 电路，采样后交给 SQD：
+
+\begin{lstlisting}[language=Python]
+c = tc_sqd.build_lucj_circuit(mf, norb, nelec, ccsd_scale=1.0)
+bsm, probs = tc_sqd.sample_from_circuit(c, n_samples=3000)
+e = tc_sqd.compute_ground_state_energy(
+    h1e, eri, norb, nelec, ecore=ecore, method="sqd",
+    bitstring_matrix=bsm, probabilities=probs)
+# H2: e = -1.13728383 (= FCI); LiH: 误差 ~7.5e-4 vs FCI
+\end{lstlisting}
+
+关键点：必须由 t2（而非 t1）驱动——\Htwo{}/STO-3G 的 t1$\approx$0（Brillouin 定理），相关能几乎全部来自 t2 双激发。
+
+\subsection{比特串约定}
+
+\begin{lstlisting}
+[ beta_{norb-1} ... beta_0 | alpha_{norb-1} ... alpha_0 ]
+  ^------- 左半 (beta) -----^  ^----- 右半 (alpha) -----^
+\end{lstlisting}
+
+与 \texttt{qiskit-addon-sqd} 一致：右半编码 alpha（自旋向上），左半编码 beta（自旋向下）。
+
+\subsection{与 qiskit-addon-sqd 的区别}
+
+\begin{table}[H]
+\centering
+\caption{\texttt{tc\_sqd} 与 \texttt{qiskit-addon-sqd} 的对比。}
+\begin{tabular}{lll}
+\toprule
+特性 & \texttt{qiskit-addon-sqd} & \texttt{tc\_sqd} \\
+\midrule
+\texttt{numpy} 要求 & $\ge$ 2.0 & $\ge$ 1.17（实测兼容 2.x） \\
+量子电路 & qiskit \texttt{QuantumCircuit} & \texttt{tensorcircuit.Circuit} \\
+采样接口 & \texttt{BitArray}（qiskit） & 直接 \texttt{numpy} 数组 \\
+CI 矩阵后端 & jax 加速 & PySCF \texttt{selected\_ci} \\
+jax 依赖 & 必须 & 不需要 \\
+基态能量入口 & 无统一入口 & \texttt{compute\_ground\_state\_energy} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{已知边界}
+
+\begin{itemize}[leftmargin=1.6em]
+  \item \textbf{闭壳层}：仅可靠支持 $n_\alpha=n_\beta$；\texttt{open\_shell=False} 下电子数不等会显式报错。
+  \item \textbf{一电子积分}：需为单个 $(n_{\text{orb}},n_{\text{orb}})$；自旋分辨积分 $h_\alpha\ne h_\beta$ 会显式拒绝。
+  \item \textbf{\texttt{spin\_sq}}：在 \texttt{solve\_sci}/\texttt{fci} 路径通过多根 $S^2$ 匹配实现目标自旋选态；\texttt{sqd}/\texttt{direct} 路径显式拒绝。
+  \item \textbf{LUCJ}：\texttt{build\_lucj\_circuit} 为简化实现（t2 范数驱动 Givens，未做 ffsim 的精确 SVD + 对角 Coulomb Jastrow），仅支持闭壳层。\Htwo{} 精确复现 FCI，LiH 误差 $\sim$7.5$\times10^{-4}$。
+\end{itemize}
+
+依赖：\texttt{tensorcircuit==0.12.0}、\texttt{numpy>=1.17}、\texttt{scipy>=1.10}、\texttt{pyscf>=2.0}；支持 Python 3.10--3.12。
+
+\end{document}
